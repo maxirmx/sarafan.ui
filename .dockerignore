@@ -1,0 +1,9 @@
+.dockerignore
+.git
+.gitignore
+.github
+.npm
+coverage
+dist
+node_modules
+README.md
