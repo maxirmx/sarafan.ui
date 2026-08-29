@@ -1,11 +1,11 @@
 <script setup>
 // Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting)
 // All rights reserved.
-// This file is a part of Sarafan application
+// This file is a part of the Sarafan application
 
 import { onMounted, ref } from 'vue'
 
-import { version } from '@/../package.json'
+import { version } from '../package.json'
 
 const appIcon = '/favicon.svg'
 const coreVersion = ref('')
