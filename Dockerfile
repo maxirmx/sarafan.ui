@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting)
 # All rights reserved.
-# This file is a part of Sarafan application
+# This file is a part of the Sarafan application
 
 FROM node:22.23.0-alpine AS build
 WORKDIR /app

@@ -1,12 +1,13 @@
 // Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting)
 // All rights reserved.
-// This file is a part of Sarafan application
+// This file is a part of the Sarafan application
 
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from '../src/App.vue'
 import { createSarafanVuetify } from '../src/plugins/vuetify.js'
+import { version as clientVersion } from '../package.json'
 
 describe('App', () => {
   afterEach(() => {
@@ -70,7 +71,7 @@ describe('App', () => {
     })
 
     await vi.waitFor(() => {
-      expect(wrapper.get('.version-info').text()).toContain('Клиент 0.0.1')
+      expect(wrapper.get('.version-info').text()).toContain(`Клиент ${clientVersion}`)
       expect(wrapper.get('.version-info').text()).toContain('Сервер 0.0.1')
     })
     expect(globalThis.fetch).toHaveBeenCalledWith('/api/status/status')
@@ -87,6 +88,6 @@ describe('App', () => {
     await vi.waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledOnce()
     })
-    expect(wrapper.get('.version-info').text()).toBe('Клиент 0.0.1')
+    expect(wrapper.get('.version-info').text()).toBe(`Клиент ${clientVersion}`)
   })
 })
