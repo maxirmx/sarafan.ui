@@ -195,6 +195,16 @@ a {
   margin-top: 12px;
 }
 
+.version-info {
+  display: flex;
+  gap: 2px;
+  margin: 12px 13px 0;
+  flex-direction: column;
+  color: rgba(255, 250, 242, 0.38);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .nav-count {
   display: grid;
   min-width: 22px;

@@ -1,6 +1,28 @@
-<!-- Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting) -->
-<!-- All rights reserved. -->
-<!-- This file is a part of Sarafan application -->
+<script setup>
+// Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting)
+// All rights reserved.
+// This file is a part of Sarafan application
+
+import { onMounted, ref } from 'vue'
+
+import { version } from '@/../package.json'
+
+const coreVersion = ref('')
+
+async function fetchCoreVersion() {
+  try {
+    const response = await globalThis.fetch('/api/status/status')
+    if (!response.ok) return
+
+    const status = await response.json()
+    coreVersion.value = status.appVersion ?? ''
+  } catch {
+    // Version information is optional and must not prevent the application from loading.
+  }
+}
+
+onMounted(fetchCoreVersion)
+</script>
 
 <template>
   <v-app class="sarafan-app">
@@ -91,6 +113,11 @@
           />
           <span>Выйти</span>
         </button>
+
+        <div class="version-info">
+          <span>Клиент {{ version }}</span>
+          <span v-if="coreVersion">Сервер {{ coreVersion }}</span>
+        </div>
       </aside>
 
       <div class="app-stage">
