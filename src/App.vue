@@ -1,3 +1,7 @@
+<!-- Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting) -->
+<!-- All rights reserved. -->
+<!-- This file is a part of Sarafan application -->
+
 <template>
   <v-app class="sarafan-app">
     <div class="app-frame">
@@ -284,7 +288,7 @@
                       <v-progress-linear
                         color="primary"
                         height="6"
-                        model-value="46"
+                        :model-value="46"
                         rounded
                       />
                     </div>
@@ -328,7 +332,7 @@
                       <v-progress-linear
                         color="secondary"
                         height="6"
-                        model-value="68"
+                        :model-value="68"
                         rounded
                       />
                     </div>

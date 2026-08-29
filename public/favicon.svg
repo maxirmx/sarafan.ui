@@ -1,3 +1,7 @@
+<!-- Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting) -->
+<!-- All rights reserved. -->
+<!-- This file is a part of Sarafan application -->
+
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="18" fill="#c34b36"/>
   <circle cx="57" cy="5" r="14" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/>
