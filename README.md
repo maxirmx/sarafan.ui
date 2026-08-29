@@ -7,7 +7,7 @@
 [![ci](https://github.com/maxirmx/sarafan.ui/actions/workflows/ci.yml/badge.svg)](https://github.com/maxirmx/sarafan.ui/actions/workflows/ci.yml)
 [![publish](https://github.com/maxirmx/sarafan.ui/actions/workflows/publish.yml/badge.svg)](https://github.com/maxirmx/sarafan.ui/actions/workflows/publish.yml)
 
-Empty Vue and Vuetify frontend for the Sarafan system. Vite builds the application and nginx serves the production image.
+Vue and Vuetify customer application for Sarafan. It provides phone-code registration and login, consent capture, refreshable sessions, profile editing, and profile-photo management. Vite builds the application and nginx serves the production image.
 
 ## Prerequisites
 
@@ -23,6 +23,9 @@ npm run dev
 ```
 
 Vite serves the application at <http://localhost:5173>.
+Requests under `/api` are proxied to Sarafan Core at <http://localhost:5080>. Start the Core development service and PostgreSQL before exercising authentication. The fixed code `1111` is shown only in development builds.
+
+Access tokens are kept in memory. The browser receives the rotating refresh token only as an HttpOnly cookie, and the UI attempts one session refresh on startup and after an authorized request returns `401`.
 
 ## Verification
 

@@ -10,6 +10,14 @@ import vuetify from 'vite-plugin-vuetify'
 
 export default defineConfig({
   plugins: [vue(), vuetify({ autoImport: true })],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5080',
+        changeOrigin: true
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
