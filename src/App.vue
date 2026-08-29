@@ -3,12 +3,28 @@
 // All rights reserved.
 // This file is a part of the Sarafan application
 
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import { version } from '../package.json'
+import AuthView from './components/AuthView.vue'
+import ProfileDialog from './components/ProfileDialog.vue'
+import { useSession } from './stores/session.js'
 
 const appIcon = '/favicon.svg'
 const coreVersion = ref('')
+const profileOpen = ref(false)
+const { customer, logout, restoreSession, restoring } = useSession()
+const firstName = computed(() => customer.value?.profile?.firstName || 'покупатель')
+const lastName = computed(() => customer.value?.profile?.lastName || '')
+const initials = computed(() => {
+  const rawFirstName = customer.value?.profile?.firstName || ''
+  const rawLastName = customer.value?.profile?.lastName || ''
+  const value = `${rawFirstName[0] ?? ''}${rawLastName[0] ?? ''}`.trim()
+  return value || 'С'
+})
+const profileLabel = computed(() =>
+  [firstName.value, lastName.value].filter(Boolean).join(' ')
+)
 
 async function fetchCoreVersion() {
   try {
@@ -22,12 +38,44 @@ async function fetchCoreVersion() {
   }
 }
 
-onMounted(fetchCoreVersion)
+async function signOut() {
+  profileOpen.value = false
+  try {
+    await logout()
+  } catch {
+    // Local session state is cleared even when the server cannot be reached.
+  }
+}
+
+onMounted(() => {
+  fetchCoreVersion()
+  restoreSession()
+})
 </script>
 
 <template>
   <v-app class="sarafan-app">
-    <div class="app-frame">
+    <section
+      v-if="restoring"
+      class="session-loading"
+      aria-label="Восстановление сессии"
+    >
+      <img
+        :src="appIcon"
+        alt=""
+      >
+      <v-progress-circular
+        color="primary"
+        indeterminate
+      />
+    </section>
+
+    <AuthView v-else-if="!customer" />
+
+    <div
+      v-else
+      class="app-frame"
+    >
       <aside class="sidebar">
         <div class="brand">
           <a
@@ -90,6 +138,7 @@ onMounted(fetchCoreVersion)
           <button
             class="nav-item"
             type="button"
+            @click="profileOpen = true"
           >
             <v-icon
               icon="$profile"
@@ -118,6 +167,7 @@ onMounted(fetchCoreVersion)
         <button
           class="nav-item nav-item--muted"
           type="button"
+          @click="signOut"
         >
           <v-icon
             icon="$logout"
@@ -177,12 +227,13 @@ onMounted(fetchCoreVersion)
             <button
               class="profile-button"
               type="button"
-              aria-label="Открыть профиль Марии Ковалёвой"
+              :aria-label="`Открыть профиль ${profileLabel}`"
+              @click="profileOpen = true"
             >
-              <span class="profile-avatar">МК</span>
+              <span class="profile-avatar">{{ initials }}</span>
               <span class="profile-copy">
-                <strong>Мария</strong>
-                <small>Ковалёва</small>
+                <strong>{{ firstName }}</strong>
+                <small v-if="lastName">{{ lastName }}</small>
               </span>
               <v-icon
                 icon="$dropdown"
@@ -260,7 +311,7 @@ onMounted(fetchCoreVersion)
               </div>
 
               <div class="hero-content">
-                <span class="hero-kicker">Добрый день, Мария</span>
+                <span class="hero-kicker">Добрый день, {{ firstName }}</span>
                 <h1 id="hero-title">
                   Покупки по всему миру —<br>
                   <em>просто передайте ссылку</em>
@@ -514,6 +565,7 @@ onMounted(fetchCoreVersion)
     </div>
 
     <nav
+      v-if="customer"
       class="mobile-nav"
       aria-label="Мобильная навигация"
     >
@@ -562,6 +614,7 @@ onMounted(fetchCoreVersion)
       <button
         class="mobile-nav__item"
         type="button"
+        @click="profileOpen = true"
       >
         <v-icon
           icon="$profile"
@@ -570,5 +623,10 @@ onMounted(fetchCoreVersion)
         <span>Профиль</span>
       </button>
     </nav>
+
+    <ProfileDialog
+      v-if="customer"
+      v-model="profileOpen"
+    />
   </v-app>
 </template>
