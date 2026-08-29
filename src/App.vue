@@ -7,6 +7,7 @@ import { onMounted, ref } from 'vue'
 
 import { version } from '@/../package.json'
 
+const appIcon = '/favicon.svg'
 const coreVersion = ref('')
 
 async function fetchCoreVersion() {
@@ -28,23 +29,34 @@ onMounted(fetchCoreVersion)
   <v-app class="sarafan-app">
     <div class="app-frame">
       <aside class="sidebar">
-        <a
-          class="brand"
-          href="#"
-          aria-label="Сарафан — главная"
-          @click.prevent
-        >
-          <span
-            class="brand-mark"
-            aria-hidden="true"
+        <div class="brand">
+          <a
+            class="brand-home"
+            href="#"
+            aria-label="Сарафан — главная"
+            @click.prevent
           >
-            <span class="brand-mark__s">С</span>
-          </span>
+            <span
+              class="brand-mark"
+              aria-hidden="true"
+            >
+              <img
+                class="brand-mark__icon"
+                :src="appIcon"
+                alt=""
+              >
+            </span>
+          </a>
           <span class="brand-copy">
             <strong>Сарафан</strong>
-            <small>доставка с заботой</small>
+            <a
+              class="brand-partner"
+              href="https://gtc.express/"
+              target="_blank"
+              rel="noopener"
+            >Совместно с GTC-Express</a>
           </span>
-        </a>
+        </div>
 
         <nav
           class="sidebar-nav"
@@ -122,22 +134,28 @@ onMounted(fetchCoreVersion)
 
       <div class="app-stage">
         <header class="topbar">
-          <a
-            class="brand brand--mobile"
-            href="#"
-            aria-label="Сарафан — главная"
-            @click.prevent
-          >
-            <span
-              class="brand-mark"
-              aria-hidden="true"
+          <div class="brand brand--mobile">
+            <a
+              class="brand-home"
+              href="#"
+              aria-label="Сарафан — главная"
+              @click.prevent
             >
-              <span class="brand-mark__s">С</span>
-            </span>
+              <span
+                class="brand-mark"
+                aria-hidden="true"
+              >
+                <img
+                  class="brand-mark__icon"
+                  :src="appIcon"
+                  alt=""
+                >
+              </span>
+            </a>
             <span class="brand-copy">
               <strong>Сарафан</strong>
             </span>
-          </a>
+          </div>
 
           <div class="page-title">
             <span>Личный кабинет</span>
@@ -184,6 +202,56 @@ onMounted(fetchCoreVersion)
                 class="hero-pattern"
                 aria-hidden="true"
               >
+                <svg
+                  class="gzhel-ornament"
+                  viewBox="0 0 360 286"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M184 292C178 247 211 228 207 188C204 154 180 143 184 109C187 85 205 69 226 58" />
+                  <path d="M185 233C149 223 132 199 133 168C134 144 147 126 164 114" />
+                  <path d="M207 188C237 181 254 162 259 137C264 112 255 91 239 77" />
+                  <path d="M135 168C109 164 91 148 84 126C77 103 84 81 100 65" />
+                  <path
+                    d="M226 58C211 48 207 31 217 18C229 28 234 43 226 58Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M226 58C240 45 258 45 270 57C259 70 243 72 226 58Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M100 65C84 58 76 43 81 28C98 33 108 47 100 65Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M100 65C114 54 132 56 141 70C129 81 113 80 100 65Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M164 114C148 106 142 91 148 77C164 83 172 98 164 114Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M259 137C275 124 294 125 305 139C292 152 274 151 259 137Z"
+                    fill="currentColor"
+                  />
+                  <circle
+                    cx="226"
+                    cy="58"
+                    r="8"
+                  />
+                  <circle
+                    cx="100"
+                    cy="65"
+                    r="7"
+                  />
+                  <circle
+                    cx="164"
+                    cy="114"
+                    r="6"
+                  />
+                </svg>
                 <span class="route-dot route-dot--one" />
                 <span class="route-dot route-dot--two" />
                 <span class="route-dot route-dot--three" />
@@ -245,7 +313,7 @@ onMounted(fetchCoreVersion)
               <div class="composer-form">
                 <v-text-field
                   aria-label="Ссылка на товар"
-                  bg-color="#f7f2eb"
+                  bg-color="#eef8fd"
                   hide-details
                   placeholder="https://store.com/product..."
                   prepend-inner-icon="$link"

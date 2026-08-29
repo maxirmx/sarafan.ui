@@ -32,6 +32,12 @@ describe('App', () => {
     ).toEqual([46, 68])
     expect(wrapper.text()).toContain('SRF-000123')
     expect(wrapper.text()).toContain('От ссылки до двери')
+    expect(wrapper.get('.brand-mark__icon').attributes('src')).toBe('/favicon.svg')
+    const partnerLink = wrapper.get('.brand-partner')
+    expect(partnerLink.text()).toBe('Совместно с GTC-Express')
+    expect(partnerLink.attributes('href')).toBe('https://gtc.express/')
+    expect(partnerLink.attributes('target')).toBe('_blank')
+    expect(partnerLink.attributes('rel')).toBe('noopener')
   })
 
   it('prevents brand links from changing the page hash', () => {
@@ -42,7 +48,7 @@ describe('App', () => {
       }
     })
 
-    for (const brand of wrapper.findAll('a.brand')) {
+    for (const brand of wrapper.findAll('a.brand-home')) {
       const { MouseEvent } = brand.element.ownerDocument.defaultView
       const click = new MouseEvent('click', { bubbles: true, cancelable: true })
 
