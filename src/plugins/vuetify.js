@@ -1,6 +1,6 @@
 // Copyright (C) 2026 Maxim [maxirmx] Samsonov (www.sw.consulting)
 // All rights reserved.
-// This file is a part of Sarafan application
+// This file is a part of the Sarafan application
 
 import { createVuetify } from 'vuetify'
 import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
@@ -30,15 +30,15 @@ export function createSarafanVuetify() {
         sarafanLight: {
           dark: false,
           colors: {
-            primary: '#c34b36',
-            secondary: '#1f6b5c',
-            background: '#f6f1e9',
-            surface: '#fffdf9',
-            'surface-variant': '#eee6dc',
-            error: '#b3261e',
-            info: '#356a8a',
-            success: '#2e745d',
-            warning: '#b86b19'
+            primary: '#1ca3e4',
+            secondary: '#2b6fb3',
+            background: '#f3f9fd',
+            surface: '#ffffff',
+            'surface-variant': '#e5f3fb',
+            error: '#b4234d',
+            info: '#2478b8',
+            success: '#167d9a',
+            warning: '#8a63b8'
           }
         }
       }
