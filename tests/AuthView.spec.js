@@ -95,6 +95,40 @@ describe('AuthView', () => {
     expect(wrapper.get('h1').text()).toBe('Рады видеть снова')
   })
 
+  it('trims authentication values before sending them to the API', async () => {
+    const customer = { id: 10, phone: '+79991234567', profile: { phone: '+79991234567' } }
+    const fetch = vi.fn((url) => {
+      if (url === '/api/v1/auth/code/request') return Promise.resolve(response(202, { message: 'sent' }))
+      if (url === '/api/v1/auth/code/verify') {
+        return Promise.resolve(response(200, {
+          accessToken: 'token',
+          expiresAt: '2026-08-30T00:15:00Z',
+          customer
+        }))
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetch)
+
+    const wrapper = mountView()
+    await wrapper.get('input[name="phone"]').setValue('  +7 999 123-45-67  ')
+    await wrapper.get('.auth-form').trigger('submit')
+    await flushPromises()
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+      phone: '+7 999 123-45-67',
+      purpose: 'login'
+    })
+
+    await wrapper.get('input[name="code"]').setValue('  1111  ')
+    await wrapper.get('.auth-form').trigger('submit')
+    await flushPromises()
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({
+      phone: '+7 999 123-45-67',
+      purpose: 'login',
+      code: '1111'
+    })
+  })
+
   it('explains a missing login account and handles an unavailable service', async () => {
     const fetch = vi.fn()
       .mockResolvedValueOnce(response(404, { detail: 'not found' }))

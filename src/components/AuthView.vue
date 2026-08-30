@@ -37,15 +37,17 @@ function errorMessage(value) {
 }
 
 async function submitPhone() {
-  if (!phone.value.trim()) {
+  const normalizedPhone = phone.value.trim()
+  if (!normalizedPhone) {
     error.value = 'Введите номер телефона'
     return
   }
 
+  phone.value = normalizedPhone
   busy.value = true
   error.value = ''
   try {
-    await requestCode(phone.value, mode.value)
+    await requestCode(normalizedPhone, mode.value)
     step.value = 'code'
   } catch (value) {
     error.value = errorMessage(value)
@@ -55,7 +57,8 @@ async function submitPhone() {
 }
 
 async function submitCode() {
-  if (!code.value.trim()) {
+  const normalizedCode = code.value.trim()
+  if (!normalizedCode) {
     error.value = 'Введите код подтверждения'
     return
   }
@@ -70,7 +73,7 @@ async function submitCode() {
     await verifyCode({
       phone: phone.value,
       purpose: mode.value,
-      code: code.value,
+      code: normalizedCode,
       termsAccepted: termsAccepted.value,
       personalDataAccepted: personalDataAccepted.value
     })
@@ -84,6 +87,90 @@ async function submitCode() {
 
 <template>
   <main class="auth-shell">
+    <div
+      class="auth-scene"
+      aria-hidden="true"
+    >
+      <div class="auth-scene__copy">
+        <span>Международные покупки</span>
+        <p>
+          Из магазина —<br>
+          <em>прямо к вам</em>
+        </p>
+        <small>
+          Выбирайте товары по всему миру.<br>
+          Мы позаботимся обо всём остальном.
+        </small>
+      </div>
+
+      <div class="auth-route">
+        <span class="auth-route__line" />
+        <span class="auth-route__stop auth-route__stop--store">
+          <i />
+          магазин
+        </span>
+        <span class="auth-route__stop auth-route__stop--warehouse">
+          <i />
+          проверка
+        </span>
+        <span class="auth-route__stop auth-route__stop--home">
+          <i />
+          у вашей двери
+        </span>
+      </div>
+
+      <svg
+        class="auth-ornament"
+        viewBox="0 0 360 286"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path d="M184 292C178 247 211 228 207 188C204 154 180 143 184 109C187 85 205 69 226 58" />
+        <path d="M185 233C149 223 132 199 133 168C134 144 147 126 164 114" />
+        <path d="M207 188C237 181 254 162 259 137C264 112 255 91 239 77" />
+        <path d="M135 168C109 164 91 148 84 126C77 103 84 81 100 65" />
+        <path
+          d="M226 58C211 48 207 31 217 18C229 28 234 43 226 58Z"
+          fill="currentColor"
+        />
+        <path
+          d="M226 58C240 45 258 45 270 57C259 70 243 72 226 58Z"
+          fill="currentColor"
+        />
+        <path
+          d="M100 65C84 58 76 43 81 28C98 33 108 47 100 65Z"
+          fill="currentColor"
+        />
+        <path
+          d="M100 65C114 54 132 56 141 70C129 81 113 80 100 65Z"
+          fill="currentColor"
+        />
+        <path
+          d="M164 114C148 106 142 91 148 77C164 83 172 98 164 114Z"
+          fill="currentColor"
+        />
+        <path
+          d="M259 137C275 124 294 125 305 139C292 152 274 151 259 137Z"
+          fill="currentColor"
+        />
+        <circle
+          cx="226"
+          cy="58"
+          r="8"
+        />
+        <circle
+          cx="100"
+          cy="65"
+          r="7"
+        />
+        <circle
+          cx="164"
+          cy="114"
+          r="6"
+        />
+      </svg>
+    </div>
+
     <section
       class="auth-card"
       aria-labelledby="auth-title"
