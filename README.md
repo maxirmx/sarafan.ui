@@ -23,7 +23,7 @@ npm run dev
 ```
 
 Vite serves the application at <http://localhost:5173>.
-Requests under `/api/v1` are proxied to Sarafan Core at <http://localhost:8080>. Start the Core development service and PostgreSQL before exercising authentication. The fixed code `1111` is shown only in development builds.
+Requests under `/api/v1` are proxied to Sarafan Core at <http://localhost:8080>. Start the Core development service and PostgreSQL before exercising authentication. The demo verification code is the phone number's last four digits in every build; the UI does not disclose that rule.
 
 Access tokens are kept in memory. The browser receives the rotating refresh token only as an HttpOnly cookie, and the UI attempts one session refresh on startup and after an authorized request returns `401`.
 

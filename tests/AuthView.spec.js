@@ -67,11 +67,12 @@ describe('AuthView', () => {
     await wrapper.get('.auth-form').trigger('submit')
     await flushPromises()
     expect(wrapper.text()).toContain('Введите код')
-    expect(wrapper.text()).toContain('используйте 1111')
+    expect(wrapper.text()).toContain('Код отправлен на +7 999 123-45-67')
+    expect(wrapper.text()).not.toContain('используйте')
 
     await wrapper.get('.auth-form').trigger('submit')
     expect(wrapper.get('.form-error').text()).toBe('Введите код подтверждения')
-    await wrapper.get('input[name="code"]').setValue('1111')
+    await wrapper.get('input[name="code"]').setValue('4567')
     await wrapper.get('.auth-form').trigger('submit')
     expect(wrapper.get('.form-error').text()).toContain('принять оба согласия')
 
@@ -118,13 +119,13 @@ describe('AuthView', () => {
       purpose: 'login'
     })
 
-    await wrapper.get('input[name="code"]').setValue('  1111  ')
+    await wrapper.get('input[name="code"]').setValue('  4567  ')
     await wrapper.get('.auth-form').trigger('submit')
     await flushPromises()
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({
       phone: '+7 999 123-45-67',
       purpose: 'login',
-      code: '1111'
+      code: '4567'
     })
   })
 
