@@ -4,16 +4,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiError, resetSessionForTests, useSession } from '../src/stores/session.js'
-
-function response(status, body = null) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: vi.fn().mockResolvedValue(body),
-    blob: vi.fn().mockResolvedValue(body)
-  }
-}
+import { INTERNAL_PROBLEM_TYPES } from '../src/errors/problem.js'
+import { resetSessionForTests, useSession } from '../src/stores/session.js'
+import { problemResponse, response } from './fixtures/http.js'
 
 describe('session store', () => {
   beforeEach(resetSessionForTests)
@@ -76,7 +69,12 @@ describe('session store', () => {
       }
       if (url === '/api/v1/customers/me') {
         profileAttempts += 1
-        return Promise.resolve(profileAttempts === 1 ? response(401, {}) : response(200, customer))
+        return Promise.resolve(profileAttempts === 1
+          ? problemResponse(401, 'invalid-access-token', {
+              title: 'Недействительный токен доступа',
+              detail: 'Обновите сеанс и повторите запрос'
+            })
+          : response(200, customer))
       }
       if (url === '/api/v1/auth/refresh') {
         return Promise.resolve(response(200, {
@@ -107,7 +105,10 @@ describe('session store', () => {
         expiresAt: '2026-08-30T00:15:00Z',
         customer
       }))
-      .mockResolvedValueOnce(response(401, { detail: 'expired' }))
+      .mockResolvedValueOnce(problemResponse(401, 'invalid-refresh-token', {
+        title: 'Недействительный сеанс',
+        detail: 'Войдите в систему повторно'
+      }))
     vi.stubGlobal('fetch', fetch)
 
     const session = useSession()
@@ -118,29 +119,38 @@ describe('session store', () => {
 
     await session.restoreSession()
     expect(session.customer.value).toBeNull()
+    expect(session.restoreProblem.value).toBeNull()
     expect(session.restoring.value).toBe(false)
   })
 
-  it('returns validation details and a fallback for malformed error responses', async () => {
-    const malformed = response(502)
-    malformed.json.mockRejectedValue(new Error('not json'))
+  it('preserves validation details and rejects malformed error responses', async () => {
+    const malformed = response(502, null, 'text/html')
     const fetch = vi.fn()
-      .mockResolvedValueOnce(response(400, {
-        errors: { Phone: ['Phone is required'], Purpose: ['Purpose is invalid'] },
-        code: 'validation_failed'
+      .mockResolvedValueOnce(problemResponse(400, 'validation-failed', {
+        title: 'Некорректный запрос',
+        detail: 'Исправьте указанные поля и повторите запрос',
+        errors: {
+          phone: ['Введите номер телефона'],
+          purpose: ['Укажите допустимую цель запроса']
+        }
       }))
       .mockResolvedValueOnce(malformed)
     vi.stubGlobal('fetch', fetch)
 
     const session = useSession()
     await expect(session.requestCode('', 'bad')).rejects.toMatchObject({
-      message: 'Phone is required Purpose is invalid',
+      message: 'Исправьте указанные поля и повторите запрос',
       status: 400,
-      code: 'validation_failed'
+      code: 'validation_failed',
+      errors: {
+        phone: ['Введите номер телефона'],
+        purpose: ['Укажите допустимую цель запроса']
+      }
     })
-    await expect(session.requestCode('+79990000004', 'login')).rejects.toEqual(
-      new ApiError('Не удалось выполнить запрос', 502)
-    )
+    await expect(session.requestCode('+79990000004', 'login')).rejects.toMatchObject({
+      type: INTERNAL_PROBLEM_TYPES.protocolError,
+      code: 'ui_protocol_error'
+    })
   })
 
   it('uploads, refreshes, reads, and deletes a profile photo', async () => {
@@ -166,7 +176,12 @@ describe('session store', () => {
         if (call.method === 'PUT') return Promise.resolve(response(204))
         if (call.method === 'DELETE') return Promise.resolve(response(204))
         photoReads += 1
-        return Promise.resolve(photoReads === 1 ? response(401, {}) : response(200, photo))
+        return Promise.resolve(photoReads === 1
+          ? problemResponse(401, 'invalid-access-token', {
+              title: 'Недействительный токен доступа',
+              detail: 'Обновите сеанс и повторите запрос'
+            })
+          : response(200, photo, 'image/png'))
       }
       if (url === '/api/v1/auth/refresh') {
         return Promise.resolve(response(200, {
@@ -188,7 +203,8 @@ describe('session store', () => {
     expect(uploadCall[1].body.get('file')).toEqual(file)
 
     expect(await session.getPhoto()).toBe(photo)
-    expect(fetch.mock.calls.at(-1)[1].headers.Authorization).toBe('Bearer refreshed-photo-token')
+    expect(fetch.mock.calls.at(-1)[1].headers.get('Authorization')).toBe('Bearer refreshed-photo-token')
+    expect(fetch.mock.calls.at(-1)[1].headers.get('Accept')).toContain('application/problem+json')
 
     await session.deletePhoto()
     expect(session.customer.value.hasPhoto).toBe(false)
@@ -205,7 +221,10 @@ describe('session store', () => {
         }))
       }
       if (url === '/api/v1/customers/me/photo') {
-        return Promise.resolve(response(415, { title: 'Unsupported photo', code: 'invalid_photo' }))
+        return Promise.resolve(problemResponse(415, 'invalid-photo-type', {
+          title: 'Недопустимый тип фотографии',
+          detail: 'Фотография должна быть в формате JPEG, PNG или WebP'
+        }))
       }
       if (url === '/api/v1/auth/logout') throw new Error('offline')
       throw new Error(`Unexpected request: ${url}`)
@@ -215,11 +234,27 @@ describe('session store', () => {
     const session = useSession()
     await session.verifyCode({ phone: customer.phone, purpose: 'login', code: '1111' })
     await expect(session.getPhoto()).rejects.toMatchObject({
-      message: 'Unsupported photo',
+      message: 'Фотография должна быть в формате JPEG, PNG или WebP',
       status: 415,
-      code: 'invalid_photo'
+      code: 'invalid_photo_type'
     })
-    await expect(session.logout()).rejects.toThrow('offline')
+    await expect(session.logout()).rejects.toMatchObject({
+      type: INTERNAL_PROBLEM_TYPES.networkUnavailable,
+      code: 'ui_network_unavailable'
+    })
     expect(session.customer.value).toBeNull()
+  })
+
+  it('exposes a recoverable restore problem for infrastructure failures', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    const session = useSession()
+    await session.restoreSession()
+
+    expect(session.customer.value).toBeNull()
+    expect(session.restoreProblem.value).toMatchObject({
+      type: INTERNAL_PROBLEM_TYPES.sessionRestoreUnavailable
+    })
+    expect(session.restoreProblem.value).not.toHaveProperty('status')
   })
 })

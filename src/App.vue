@@ -6,15 +6,16 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { version } from '../package.json'
-import { API_BASE_PATH } from './api.js'
 import AuthView from './components/AuthView.vue'
 import ProfileDialog from './components/ProfileDialog.vue'
+import { presentProblem, suppressProblem } from './errors/problem.js'
 import { useSession } from './stores/session.js'
 
 const appIcon = '/favicon.svg'
 const coreVersion = ref('')
 const profileOpen = ref(false)
-const { customer, logout, restoreSession, restoring } = useSession()
+const { customer, getStatus, logout, restoreProblem, restoreSession, restoring } = useSession()
+const restoreMessage = computed(() => restoreProblem.value ? presentProblem(restoreProblem.value) : '')
 const firstName = computed(() => customer.value?.profile?.firstName || 'покупатель')
 const lastName = computed(() => customer.value?.profile?.lastName || '')
 const initials = computed(() => {
@@ -29,13 +30,10 @@ const profileLabel = computed(() =>
 
 async function fetchCoreVersion() {
   try {
-    const response = await globalThis.fetch(`${API_BASE_PATH}/status/status`)
-    if (!response.ok) return
-
-    const status = await response.json()
+    const status = await getStatus()
     coreVersion.value = status.appVersion ?? ''
-  } catch {
-    // Version information is optional and must not prevent the application from loading.
+  } catch (value) {
+    suppressProblem(value, { detail: 'Не удалось получить версию сервера' })
   }
 }
 
@@ -43,8 +41,8 @@ async function signOut() {
   profileOpen.value = false
   try {
     await logout()
-  } catch {
-    // Local session state is cleared even when the server cannot be reached.
+  } catch (value) {
+    suppressProblem(value, { detail: 'Не удалось завершить сеанс на сервере' })
   }
 }
 
@@ -69,6 +67,25 @@ onMounted(() => {
         color="primary"
         indeterminate
       />
+    </section>
+
+    <section
+      v-else-if="restoreProblem"
+      class="session-loading session-error"
+      role="alert"
+    >
+      <img
+        :src="appIcon"
+        alt=""
+      >
+      <strong>{{ restoreProblem.title }}</strong>
+      <p>{{ restoreMessage }}</p>
+      <v-btn
+        color="primary"
+        @click="restoreSession"
+      >
+        Повторить
+      </v-btn>
     </section>
 
     <AuthView v-else-if="!customer" />

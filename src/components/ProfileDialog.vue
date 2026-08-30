@@ -3,8 +3,14 @@
 // All rights reserved.
 // This file is a part of the Sarafan application
 
-import { onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 
+import {
+  createInternalProblem,
+  normalizeProblem,
+  presentProblem,
+  problemFieldErrors
+} from '../errors/problem.js'
 import { useSession } from '../stores/session.js'
 
 const props = defineProps({
@@ -19,7 +25,8 @@ const fields = [
 ]
 const form = reactive(Object.fromEntries(fields.map((field) => [field, ''])))
 const busy = ref(false)
-const error = ref('')
+const problem = ref(null)
+const error = computed(() => problem.value ? presentProblem(problem.value) : '')
 const saved = ref(false)
 const photoUrl = ref('')
 let photoLoadVersion = 0
@@ -34,6 +41,14 @@ function fillForm() {
   for (const field of fields) form[field] = customer.value?.profile?.[field] ?? ''
 }
 
+function fieldErrors(field) {
+  return problemFieldErrors(problem.value, field)
+}
+
+function captureProblem(value, detail) {
+  problem.value = normalizeProblem(value, { detail })
+}
+
 async function loadPhoto() {
   releasePhoto()
   const loadVersion = photoLoadVersion
@@ -42,8 +57,10 @@ async function loadPhoto() {
     const photo = await getPhoto()
     if (loadVersion !== photoLoadVersion || !props.modelValue) return
     photoUrl.value = globalThis.URL.createObjectURL(photo)
-  } catch {
-    // The profile remains editable if an existing photo cannot be loaded.
+  } catch (value) {
+    if (loadVersion === photoLoadVersion && props.modelValue) {
+      problem.value = createInternalProblem('photoPreviewUnavailable', { cause: value })
+    }
   }
 }
 
@@ -52,7 +69,7 @@ watch(() => props.modelValue, async (open) => {
     releasePhoto()
     return
   }
-  error.value = ''
+  problem.value = null
   saved.value = false
   fillForm()
   await loadPhoto()
@@ -60,7 +77,7 @@ watch(() => props.modelValue, async (open) => {
 
 async function save() {
   busy.value = true
-  error.value = ''
+  problem.value = null
   saved.value = false
   try {
     await updateProfile(Object.fromEntries(
@@ -68,7 +85,7 @@ async function save() {
     ))
     saved.value = true
   } catch (value) {
-    error.value = value?.message || 'Не удалось сохранить профиль'
+    captureProblem(value, 'Не удалось сохранить профиль')
   } finally {
     busy.value = false
   }
@@ -79,17 +96,20 @@ async function selectPhoto(event) {
   event.target.value = ''
   if (!file) return
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-    error.value = 'Выберите JPEG, PNG или WebP размером не более 5 МБ'
+    problem.value = createInternalProblem('invalidInput', {
+      detail: 'Выберите JPEG, PNG или WebP размером не более 5 МБ',
+      errors: { photo: ['Выберите JPEG, PNG или WebP размером не более 5 МБ'] }
+    })
     return
   }
 
   busy.value = true
-  error.value = ''
+  problem.value = null
   try {
     await uploadPhoto(file)
     await loadPhoto()
   } catch (value) {
-    error.value = value?.message || 'Не удалось загрузить фотографию'
+    captureProblem(value, 'Не удалось загрузить фотографию')
   } finally {
     busy.value = false
   }
@@ -97,12 +117,12 @@ async function selectPhoto(event) {
 
 async function removePhoto() {
   busy.value = true
-  error.value = ''
+  problem.value = null
   try {
     await deletePhoto()
     releasePhoto()
   } catch (value) {
-    error.value = value?.message || 'Не удалось удалить фотографию'
+    captureProblem(value, 'Не удалось удалить фотографию')
   } finally {
     busy.value = false
   }
@@ -177,18 +197,21 @@ onBeforeUnmount(releasePhoto)
             label="Фамилия"
             maxlength="100"
             variant="outlined"
+            :error-messages="fieldErrors('lastName')"
           />
           <v-text-field
             v-model="form.firstName"
             label="Имя"
             maxlength="100"
             variant="outlined"
+            :error-messages="fieldErrors('firstName')"
           />
           <v-text-field
             v-model="form.patronymic"
             label="Отчество"
             maxlength="100"
             variant="outlined"
+            :error-messages="fieldErrors('patronymic')"
           />
           <v-text-field
             v-model="form.email"
@@ -196,6 +219,7 @@ onBeforeUnmount(releasePhoto)
             type="email"
             maxlength="254"
             variant="outlined"
+            :error-messages="fieldErrors('email')"
           />
           <v-text-field
             v-model="form.inn"
@@ -203,24 +227,28 @@ onBeforeUnmount(releasePhoto)
             inputmode="numeric"
             maxlength="12"
             variant="outlined"
+            :error-messages="fieldErrors('inn')"
           />
           <v-text-field
             v-model="form.postalCode"
             label="Почтовый индекс"
             maxlength="20"
             variant="outlined"
+            :error-messages="fieldErrors('postalCode')"
           />
           <v-text-field
             v-model="form.city"
             label="Город"
             maxlength="150"
             variant="outlined"
+            :error-messages="fieldErrors('city')"
           />
           <v-text-field
             v-model="form.address"
             label="Адрес"
             maxlength="500"
             variant="outlined"
+            :error-messages="fieldErrors('address')"
           />
         </div>
 
@@ -232,18 +260,21 @@ onBeforeUnmount(releasePhoto)
               label="Серия"
               maxlength="32"
               variant="outlined"
+              :error-messages="fieldErrors('passportSeries')"
             />
             <v-text-field
               v-model="form.passportNumber"
               label="Номер"
               maxlength="32"
               variant="outlined"
+              :error-messages="fieldErrors('passportNumber')"
             />
             <v-text-field
               v-model="form.passportIssueDate"
               label="Дата выдачи"
               type="date"
               variant="outlined"
+              :error-messages="fieldErrors('passportIssueDate')"
             />
             <v-text-field
               v-model="form.passportIssuedBy"
@@ -251,6 +282,7 @@ onBeforeUnmount(releasePhoto)
               label="Кем выдан"
               maxlength="500"
               variant="outlined"
+              :error-messages="fieldErrors('passportIssuedBy')"
             />
           </div>
         </details>

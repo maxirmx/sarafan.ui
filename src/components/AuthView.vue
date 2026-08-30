@@ -5,7 +5,14 @@
 
 import { computed, ref, watch } from 'vue'
 
-import { ApiError, useSession } from '../stores/session.js'
+import {
+  CORE_PROBLEM_TYPES,
+  createInternalProblem,
+  normalizeProblem,
+  presentProblem,
+  problemFieldErrors
+} from '../errors/problem.js'
+import { useSession } from '../stores/session.js'
 
 const { requestCode, verifyCode } = useSession()
 const appIcon = '/favicon.svg'
@@ -17,40 +24,47 @@ const code = ref('')
 const termsAccepted = ref(false)
 const personalDataAccepted = ref(false)
 const busy = ref(false)
-const error = ref('')
+const problem = ref(null)
 
 const isRegistration = computed(() => mode.value === 'register')
+const error = computed(() => problem.value
+  ? presentProblem(problem.value, {
+      detailsByType: isRegistration.value
+        ? {}
+        : {
+            [CORE_PROBLEM_TYPES.customerNotFound]: 'Пользователь с таким телефоном не найден. Выберите регистрацию.'
+          }
+    })
+  : '')
+const phoneErrors = computed(() => problemFieldErrors(problem.value, 'phone'))
+const codeErrors = computed(() => problemFieldErrors(problem.value, 'code'))
+const termsErrors = computed(() => problemFieldErrors(problem.value, 'termsAccepted'))
+const personalDataErrors = computed(() => problemFieldErrors(problem.value, 'personalDataAccepted'))
 
 watch(mode, () => {
   step.value = 'phone'
   code.value = ''
-  error.value = ''
+  problem.value = null
 })
-
-function errorMessage(value) {
-  if (value instanceof ApiError && value.status === 404) {
-    return mode.value === 'login'
-      ? 'Пользователь с таким телефоном не найден. Выберите регистрацию.'
-      : value.message
-  }
-  return value?.message || 'Сервис временно недоступен'
-}
 
 async function submitPhone() {
   const normalizedPhone = phone.value.trim()
   if (!normalizedPhone) {
-    error.value = 'Введите номер телефона'
+    problem.value = createInternalProblem('invalidInput', {
+      detail: 'Введите номер телефона',
+      errors: { phone: ['Введите номер телефона'] }
+    })
     return
   }
 
   phone.value = normalizedPhone
   busy.value = true
-  error.value = ''
+  problem.value = null
   try {
     await requestCode(normalizedPhone, mode.value)
     step.value = 'code'
   } catch (value) {
-    error.value = errorMessage(value)
+    problem.value = normalizeProblem(value)
   } finally {
     busy.value = false
   }
@@ -59,16 +73,25 @@ async function submitPhone() {
 async function submitCode() {
   const normalizedCode = code.value.trim()
   if (!normalizedCode) {
-    error.value = 'Введите код подтверждения'
+    problem.value = createInternalProblem('invalidInput', {
+      detail: 'Введите код подтверждения',
+      errors: { code: ['Введите код подтверждения'] }
+    })
     return
   }
   if (isRegistration.value && (!termsAccepted.value || !personalDataAccepted.value)) {
-    error.value = 'Для регистрации необходимо принять оба согласия'
+    problem.value = createInternalProblem('invalidInput', {
+      detail: 'Для регистрации необходимо принять оба согласия',
+      errors: {
+        termsAccepted: ['Примите условия использования сервиса'],
+        personalDataAccepted: ['Дайте согласие на обработку персональных данных']
+      }
+    })
     return
   }
 
   busy.value = true
-  error.value = ''
+  problem.value = null
   try {
     await verifyCode({
       phone: phone.value,
@@ -78,7 +101,7 @@ async function submitCode() {
       personalDataAccepted: personalDataAccepted.value
     })
   } catch (value) {
-    error.value = errorMessage(value)
+    problem.value = normalizeProblem(value)
   } finally {
     busy.value = false
   }
@@ -232,6 +255,7 @@ async function submitCode() {
           inputmode="tel"
           variant="outlined"
           :disabled="busy"
+          :error-messages="phoneErrors"
         />
         <p
           v-if="error"
@@ -277,6 +301,7 @@ async function submitCode() {
           maxlength="16"
           variant="outlined"
           :disabled="busy"
+          :error-messages="codeErrors"
         />
         <div
           v-if="isRegistration"
@@ -287,12 +312,14 @@ async function submitCode() {
             hide-details
             label="Я принимаю условия использования сервиса"
             :disabled="busy"
+            :error-messages="termsErrors"
           />
           <v-checkbox
             v-model="personalDataAccepted"
             hide-details
             label="Я согласен на обработку персональных данных"
             :disabled="busy"
+            :error-messages="personalDataErrors"
           />
         </div>
         <p
