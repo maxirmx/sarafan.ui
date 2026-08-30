@@ -16,7 +16,6 @@ import { useSession } from '../stores/session.js'
 
 const { requestCode, verifyCode } = useSession()
 const appIcon = '/favicon.svg'
-const fixedCodeAvailable = import.meta.env.DEV
 const mode = ref('login')
 const step = ref('phone')
 const phone = ref('')
@@ -285,12 +284,7 @@ async function submitCode() {
           <h1 id="auth-title">
             Введите код
           </h1>
-          <p>
-            Код отправлен на {{ phone }}.
-            <template v-if="fixedCodeAvailable">
-              В локальной среде разработки используйте 1111.
-            </template>
-          </p>
+          <p>Код отправлен на {{ phone }}.</p>
         </div>
         <v-text-field
           v-model="code"

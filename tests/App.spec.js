@@ -104,7 +104,7 @@ describe('App authentication flow', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('Введите код')
 
-    await wrapper.get('input[name="code"]').setValue('1111')
+    await wrapper.get('input[name="code"]').setValue('4567')
     await wrapper.get('.auth-form').trigger('submit')
     await vi.waitFor(() => expect(wrapper.find('.hero-section').exists()).toBe(true))
 
@@ -112,7 +112,7 @@ describe('App authentication flow', () => {
     expect(JSON.parse(verificationCall[1].body)).toMatchObject({
       phone: '+7 999 123-45-67',
       purpose: 'login',
-      code: '1111'
+      code: '4567'
     })
     expect(verificationCall[1].credentials).toBe('include')
   })
