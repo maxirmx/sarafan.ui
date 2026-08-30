@@ -12,8 +12,8 @@ export default defineConfig({
   plugins: [vue(), vuetify({ autoImport: true })],
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:5080',
+      '/api/v1': {
+        target: 'http://localhost:8080',
         changeOrigin: true
       }
     }

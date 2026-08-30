@@ -6,6 +6,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { version } from '../package.json'
+import { API_BASE_PATH } from './api.js'
 import AuthView from './components/AuthView.vue'
 import ProfileDialog from './components/ProfileDialog.vue'
 import { useSession } from './stores/session.js'
@@ -28,7 +29,7 @@ const profileLabel = computed(() =>
 
 async function fetchCoreVersion() {
   try {
-    const response = await globalThis.fetch('/api/status/status')
+    const response = await globalThis.fetch(`${API_BASE_PATH}/status/status`)
     if (!response.ok) return
 
     const status = await response.json()

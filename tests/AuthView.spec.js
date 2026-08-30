@@ -35,13 +35,13 @@ describe('AuthView', () => {
     let requestAttempts = 0
     let verifyAttempts = 0
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url === '/api/auth/code/request') {
+      if (url === '/api/v1/auth/code/request') {
         requestAttempts += 1
         return Promise.resolve(requestAttempts === 1
           ? response(404, { detail: 'Код для регистрации недоступен' })
           : response(202, { message: 'sent' }))
       }
-      if (url === '/api/auth/code/verify') {
+      if (url === '/api/v1/auth/code/verify') {
         verifyAttempts += 1
         return Promise.resolve(verifyAttempts === 1
           ? response(401, { detail: 'Неверный код' })

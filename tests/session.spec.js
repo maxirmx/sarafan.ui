@@ -36,14 +36,14 @@ describe('session store', () => {
       profile: { ...originalCustomer.profile, firstName: 'Анна' }
     }
     const fetch = vi.fn((url) => {
-      if (url === '/api/auth/code/verify') {
+      if (url === '/api/v1/auth/code/verify') {
         return Promise.resolve(response(200, {
           accessToken: 'jwt-value',
           expiresAt: '2026-08-30T00:15:00Z',
           customer: originalCustomer
         }))
       }
-      if (url === '/api/customers/me') return Promise.resolve(response(200, updatedCustomer))
+      if (url === '/api/v1/customers/me') return Promise.resolve(response(200, updatedCustomer))
       throw new Error(`Unexpected request: ${url}`)
     })
     vi.stubGlobal('fetch', fetch)
@@ -52,7 +52,7 @@ describe('session store', () => {
     await session.verifyCode({ phone: originalCustomer.phone, purpose: 'login', code: '1111' })
     await session.updateProfile({ firstName: 'Анна' })
 
-    const updateCall = fetch.mock.calls.find(([url]) => url === '/api/customers/me')
+    const updateCall = fetch.mock.calls.find(([url]) => url === '/api/v1/customers/me')
     expect(updateCall[1].headers.get('Authorization')).toBe('Bearer jwt-value')
     expect(session.customer.value.profile.firstName).toBe('Анна')
   })
@@ -67,18 +67,18 @@ describe('session store', () => {
     }
     let profileAttempts = 0
     const fetch = vi.fn((url) => {
-      if (url === '/api/auth/code/verify') {
+      if (url === '/api/v1/auth/code/verify') {
         return Promise.resolve(response(200, {
           accessToken: 'old-token',
           expiresAt: '2026-08-30T00:15:00Z',
           customer
         }))
       }
-      if (url === '/api/customers/me') {
+      if (url === '/api/v1/customers/me') {
         profileAttempts += 1
         return Promise.resolve(profileAttempts === 1 ? response(401, {}) : response(200, customer))
       }
-      if (url === '/api/auth/refresh') {
+      if (url === '/api/v1/auth/refresh') {
         return Promise.resolve(response(200, {
           accessToken: 'new-token',
           expiresAt: '2026-08-30T00:30:00Z',
@@ -93,10 +93,10 @@ describe('session store', () => {
     await session.verifyCode({ phone: customer.phone, purpose: 'login', code: '1111' })
     await session.updateProfile({ firstName: 'Иван' })
 
-    const profileCalls = fetch.mock.calls.filter(([url]) => url === '/api/customers/me')
+    const profileCalls = fetch.mock.calls.filter(([url]) => url === '/api/v1/customers/me')
     expect(profileCalls).toHaveLength(2)
     expect(profileCalls[1][1].headers.get('Authorization')).toBe('Bearer new-token')
-    expect(fetch.mock.calls.filter(([url]) => url === '/api/auth/refresh')).toHaveLength(1)
+    expect(fetch.mock.calls.filter(([url]) => url === '/api/v1/auth/refresh')).toHaveLength(1)
   })
 
   it('restores one shared refresh request and clears an unavailable session', async () => {
@@ -154,21 +154,21 @@ describe('session store', () => {
     const photo = new globalThis.Blob(['image'], { type: 'image/png' })
     let photoReads = 0
     const fetch = vi.fn((url) => {
-      if (url === '/api/auth/code/verify') {
+      if (url === '/api/v1/auth/code/verify') {
         return Promise.resolve(response(200, {
           accessToken: 'photo-token',
           expiresAt: '2026-08-30T00:15:00Z',
           customer
         }))
       }
-      if (url === '/api/customers/me/photo') {
+      if (url === '/api/v1/customers/me/photo') {
         const call = fetch.mock.calls.at(-1)[1]
         if (call.method === 'PUT') return Promise.resolve(response(204))
         if (call.method === 'DELETE') return Promise.resolve(response(204))
         photoReads += 1
         return Promise.resolve(photoReads === 1 ? response(401, {}) : response(200, photo))
       }
-      if (url === '/api/auth/refresh') {
+      if (url === '/api/v1/auth/refresh') {
         return Promise.resolve(response(200, {
           accessToken: 'refreshed-photo-token',
           expiresAt: '2026-08-30T00:30:00Z',
@@ -197,17 +197,17 @@ describe('session store', () => {
   it('clears local state when logout fails and surfaces photo errors', async () => {
     const customer = { id: 5, phone: '+79990000005', profile: { phone: '+79990000005' } }
     const fetch = vi.fn((url) => {
-      if (url === '/api/auth/code/verify') {
+      if (url === '/api/v1/auth/code/verify') {
         return Promise.resolve(response(200, {
           accessToken: 'token',
           expiresAt: '2026-08-30T00:15:00Z',
           customer
         }))
       }
-      if (url === '/api/customers/me/photo') {
+      if (url === '/api/v1/customers/me/photo') {
         return Promise.resolve(response(415, { title: 'Unsupported photo', code: 'invalid_photo' }))
       }
-      if (url === '/api/auth/logout') throw new Error('offline')
+      if (url === '/api/v1/auth/logout') throw new Error('offline')
       throw new Error(`Unexpected request: ${url}`)
     })
     vi.stubGlobal('fetch', fetch)
