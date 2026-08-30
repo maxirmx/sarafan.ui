@@ -8,17 +8,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProfileDialog from '../src/components/ProfileDialog.vue'
 import { createSarafanVuetify } from '../src/plugins/vuetify.js'
 import { resetSessionForTests, useSession } from '../src/stores/session.js'
+import { problemResponse, response } from './fixtures/http.js'
 
 const originalUrl = globalThis.URL
-
-function response(status, body = null) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: vi.fn().mockResolvedValue(body),
-    blob: vi.fn().mockResolvedValue(body)
-  }
-}
 
 function sessionResponse(customer) {
   return response(200, {
@@ -138,7 +130,11 @@ describe('ProfileDialog', () => {
     expect(wrapper.emitted('update:modelValue')).toContainEqual([false])
     const buttons = wrapper.findAllComponents({ name: 'VBtn' })
     await buttons[0].trigger('click')
-    await buttons.at(-2).trigger('click')
+    const cancelButton = [...document.querySelectorAll('.profile-dialog__actions button')]
+      .find((button) => button.textContent.includes('Отмена'))
+    await vi.waitFor(() => expect(cancelButton.disabled).toBe(false))
+    cancelButton.click()
+    await flushPromises()
     expect(wrapper.emitted('update:modelValue').filter(([value]) => value === false).length).toBeGreaterThan(2)
 
     await wrapper.setProps({ modelValue: false })
@@ -207,16 +203,33 @@ describe('ProfileDialog', () => {
     let photoReads = 0
     const fetch = vi.fn((url, options) => {
       if (url === '/api/v1/auth/code/verify') return Promise.resolve(sessionResponse(customer))
-      if (url === '/api/v1/customers/me') return Promise.resolve(response(400, { detail: 'Профиль не сохранён' }))
+      if (url === '/api/v1/customers/me') {
+        return Promise.resolve(problemResponse(400, 'validation-failed', {
+          title: 'Некорректный запрос',
+          detail: 'Профиль не сохранён',
+          errors: { firstName: ['Проверьте имя'] }
+        }))
+      }
       if (url === '/api/v1/customers/me/photo' && options.method === 'PUT') {
-        return Promise.resolve(response(400, { detail: 'Фото не загружено' }))
+        return Promise.resolve(problemResponse(400, 'invalid-photo-content', {
+          title: 'Некорректное содержимое фотографии',
+          detail: 'Фото не загружено'
+        }))
       }
       if (url === '/api/v1/customers/me/photo' && options.method === 'DELETE') {
-        return Promise.resolve(response(500, { detail: 'Фото не удалено' }))
+        return Promise.resolve(problemResponse(500, 'internal-error', {
+          title: 'Внутренняя ошибка сервиса',
+          detail: 'Фото не удалено'
+        }))
       }
       if (url === '/api/v1/customers/me/photo') {
         photoReads += 1
-        return Promise.resolve(response(photoReads === 1 ? 500 : 200, photoReads === 1 ? {} : new globalThis.Blob(['photo'])))
+        return Promise.resolve(photoReads === 1
+          ? problemResponse(500, 'internal-error', {
+              title: 'Внутренняя ошибка сервиса',
+              detail: 'Фотография временно недоступна'
+            })
+          : response(200, new globalThis.Blob(['photo']), 'image/png'))
       }
       throw new Error(`Unexpected request: ${url}`)
     })

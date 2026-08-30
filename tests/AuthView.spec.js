@@ -8,14 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthView from '../src/components/AuthView.vue'
 import { createSarafanVuetify } from '../src/plugins/vuetify.js'
 import { resetSessionForTests, useSession } from '../src/stores/session.js'
-
-function response(status, body = null) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: vi.fn().mockResolvedValue(body)
-  }
-}
+import { problemResponse, response } from './fixtures/http.js'
 
 function mountView() {
   return mount(AuthView, {
@@ -38,13 +31,19 @@ describe('AuthView', () => {
       if (url === '/api/v1/auth/code/request') {
         requestAttempts += 1
         return Promise.resolve(requestAttempts === 1
-          ? response(404, { detail: 'Код для регистрации недоступен' })
+          ? problemResponse(404, 'customer-not-found', {
+              title: 'Пользователь не найден',
+              detail: 'Код для регистрации недоступен'
+            })
           : response(202, { message: 'sent' }))
       }
       if (url === '/api/v1/auth/code/verify') {
         verifyAttempts += 1
         return Promise.resolve(verifyAttempts === 1
-          ? response(401, { detail: 'Неверный код' })
+          ? problemResponse(401, 'invalid-code', {
+              title: 'Некорректный код подтверждения',
+              detail: 'Неверный код'
+            })
           : response(200, {
               accessToken: 'token',
               expiresAt: '2026-08-30T00:15:00Z',
@@ -131,7 +130,10 @@ describe('AuthView', () => {
 
   it('explains a missing login account and handles an unavailable service', async () => {
     const fetch = vi.fn()
-      .mockResolvedValueOnce(response(404, { detail: 'not found' }))
+      .mockResolvedValueOnce(problemResponse(404, 'customer-not-found', {
+        title: 'Пользователь не найден',
+        detail: 'Пользователь с таким телефоном не найден'
+      }))
       .mockRejectedValueOnce()
     vi.stubGlobal('fetch', fetch)
 
@@ -143,6 +145,6 @@ describe('AuthView', () => {
 
     await wrapper.get('.auth-form').trigger('submit')
     await flushPromises()
-    expect(wrapper.get('.form-error').text()).toBe('Сервис временно недоступен')
+    expect(wrapper.get('.form-error').text()).toBe('Проверьте подключение к интернету и повторите попытку')
   })
 })

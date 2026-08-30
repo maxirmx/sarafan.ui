@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../src/App.vue'
 import { createSarafanVuetify } from '../src/plugins/vuetify.js'
 import { resetSessionForTests } from '../src/stores/session.js'
+import { problemResponse, response } from './fixtures/http.js'
 
 const customer = {
   id: 17,
@@ -18,14 +19,6 @@ const customer = {
     phone: '+79991234567',
     firstName: 'Мария',
     lastName: 'Ковалёва'
-  }
-}
-
-function response(status, body = null) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: vi.fn().mockResolvedValue(body)
   }
 }
 
@@ -45,7 +38,12 @@ describe('App authentication flow', () => {
   it('shows authentication when no refresh session is available', async () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
       if (url === '/api/v1/status/status') return Promise.resolve(response(200, { appVersion: '0.0.3' }))
-      if (url === '/api/v1/auth/refresh') return Promise.resolve(response(401, { detail: 'expired' }))
+      if (url === '/api/v1/auth/refresh') {
+        return Promise.resolve(problemResponse(401, 'invalid-refresh-token', {
+          title: 'Недействительный сеанс',
+          detail: 'Войдите в систему повторно'
+        }))
+      }
       throw new Error(`Unexpected request: ${url}`)
     }))
 
@@ -80,7 +78,12 @@ describe('App authentication flow', () => {
   it('requests and verifies a one-time login code', async () => {
     const fetch = vi.fn((url) => {
       if (url === '/api/v1/status/status') return Promise.resolve(response(200, { appVersion: '0.0.3' }))
-      if (url === '/api/v1/auth/refresh') return Promise.resolve(response(401, { detail: 'expired' }))
+      if (url === '/api/v1/auth/refresh') {
+        return Promise.resolve(problemResponse(401, 'invalid-refresh-token', {
+          title: 'Недействительный сеанс',
+          detail: 'Войдите в систему повторно'
+        }))
+      }
       if (url === '/api/v1/auth/code/request') return Promise.resolve(response(202, { message: 'sent' }))
       if (url === '/api/v1/auth/code/verify') {
         return Promise.resolve(response(200, {
@@ -120,7 +123,12 @@ describe('App authentication flow', () => {
       profile: { phone: customer.phone }
     }
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url === '/api/v1/status/status') return Promise.resolve(response(503))
+      if (url === '/api/v1/status/status') {
+        return Promise.resolve(problemResponse(503, 'verification-unavailable', {
+          title: 'Подтверждение временно недоступно',
+          detail: 'Повторите запрос позднее'
+        }))
+      }
       if (url === '/api/v1/auth/refresh') {
         return Promise.resolve(response(200, {
           accessToken: 'access-token',
@@ -167,6 +175,29 @@ describe('App authentication flow', () => {
     const wrapper = mountApp()
     await vi.waitFor(() => expect(wrapper.find('.app-frame').exists()).toBe(true))
     await wrapper.get('.nav-item--muted').trigger('click')
+    await vi.waitFor(() => expect(wrapper.find('.auth-card').exists()).toBe(true))
+  })
+
+  it('shows and retries a recoverable session restoration failure', async () => {
+    let refreshAttempts = 0
+    vi.stubGlobal('fetch', vi.fn((url) => {
+      if (url === '/api/v1/status/status') return Promise.resolve(response(200, { appVersion: '0.0.4' }))
+      if (url === '/api/v1/auth/refresh') {
+        refreshAttempts += 1
+        if (refreshAttempts === 1) return Promise.reject(new TypeError('Failed to fetch'))
+        return Promise.resolve(problemResponse(401, 'invalid-refresh-token', {
+          title: 'Недействительный сеанс',
+          detail: 'Войдите в систему повторно'
+        }))
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    }))
+
+    const wrapper = mountApp()
+    await vi.waitFor(() => expect(wrapper.find('.session-error').exists()).toBe(true))
+    expect(wrapper.get('.session-error').text()).not.toContain('Failed to fetch')
+
+    await wrapper.get('.session-error button').trigger('click')
     await vi.waitFor(() => expect(wrapper.find('.auth-card').exists()).toBe(true))
   })
 })
