@@ -28,6 +28,14 @@ function sessionResponse(customer) {
   })
 }
 
+function deferred() {
+  let resolve
+  const promise = new Promise((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 function mountDialog() {
   return mount(ProfileDialog, {
     props: { modelValue: false },
@@ -136,6 +144,55 @@ describe('ProfileDialog', () => {
     await wrapper.setProps({ modelValue: false })
     await wrapper.setProps({ modelValue: true })
     await vi.waitFor(() => expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(2))
+    wrapper.unmount()
+  })
+
+  it('ignores stale photo loads after the dialog is closed and reopened', async () => {
+    const customer = {
+      id: 14,
+      phone: '+79990000014',
+      state: 'preliminary',
+      hasPhoto: true,
+      profile: { phone: '+79990000014' }
+    }
+    const stalePhoto = new globalThis.Blob(['stale'], { type: 'image/png' })
+    const latestPhoto = new globalThis.Blob(['latest'], { type: 'image/png' })
+    const firstPhotoResponse = deferred()
+    const secondPhotoResponse = deferred()
+    let photoReads = 0
+    const fetch = vi.fn((url) => {
+      if (url === '/api/v1/auth/code/verify') return Promise.resolve(sessionResponse(customer))
+      if (url === '/api/v1/customers/me/photo') {
+        photoReads += 1
+        return photoReads === 1 ? firstPhotoResponse.promise : secondPhotoResponse.promise
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetch)
+    globalThis.URL.createObjectURL.mockImplementation((photo) =>
+      photo === latestPhoto ? 'blob:latest-photo' : 'blob:stale-photo'
+    )
+    await useSession().verifyCode({ phone: customer.phone, purpose: 'login', code: '1111' })
+
+    const wrapper = mountDialog()
+    await wrapper.setProps({ modelValue: true })
+    await vi.waitFor(() => expect(photoReads).toBe(1))
+    await wrapper.setProps({ modelValue: false })
+    await wrapper.setProps({ modelValue: true })
+    await vi.waitFor(() => expect(photoReads).toBe(2))
+
+    secondPhotoResponse.resolve(response(200, latestPhoto))
+    await vi.waitFor(() => {
+      expect(document.querySelector('.profile-photo__preview img')?.getAttribute('src'))
+        .toBe('blob:latest-photo')
+    })
+    firstPhotoResponse.resolve(response(200, stalePhoto))
+    await flushPromises()
+    expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(1)
+    expect(globalThis.URL.createObjectURL).toHaveBeenCalledWith(latestPhoto)
+
+    await wrapper.setProps({ modelValue: false })
+    expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:latest-photo')
     wrapper.unmount()
   })
 

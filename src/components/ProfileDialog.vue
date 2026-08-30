@@ -22,8 +22,10 @@ const busy = ref(false)
 const error = ref('')
 const saved = ref(false)
 const photoUrl = ref('')
+let photoLoadVersion = 0
 
 function releasePhoto() {
+  photoLoadVersion += 1
   if (photoUrl.value) globalThis.URL.revokeObjectURL(photoUrl.value)
   photoUrl.value = ''
 }
@@ -34,9 +36,12 @@ function fillForm() {
 
 async function loadPhoto() {
   releasePhoto()
-  if (!customer.value?.hasPhoto) return
+  const loadVersion = photoLoadVersion
+  if (!props.modelValue || !customer.value?.hasPhoto) return
   try {
-    photoUrl.value = globalThis.URL.createObjectURL(await getPhoto())
+    const photo = await getPhoto()
+    if (loadVersion !== photoLoadVersion || !props.modelValue) return
+    photoUrl.value = globalThis.URL.createObjectURL(photo)
   } catch {
     // The profile remains editable if an existing photo cannot be loaded.
   }
