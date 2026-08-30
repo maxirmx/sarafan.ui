@@ -4,6 +4,8 @@
 
 import { readonly, ref } from 'vue'
 
+import { API_BASE_PATH } from '../api.js'
+
 export class ApiError extends Error {
   constructor(message, status, code = '') {
     super(message)
@@ -82,7 +84,7 @@ function jsonOptions(method, body) {
 
 async function refreshSession() {
   if (!refreshPromise) {
-    refreshPromise = fetchSession('/api/auth/refresh', { method: 'POST' })
+    refreshPromise = fetchSession(`${API_BASE_PATH}/auth/refresh`, { method: 'POST' })
       .then(applySession)
       .catch((error) => {
         clearSession()
@@ -108,17 +110,17 @@ async function restoreSession() {
 }
 
 async function requestCode(phone, purpose) {
-  return fetchSession('/api/auth/code/request', jsonOptions('POST', { phone, purpose }))
+  return fetchSession(`${API_BASE_PATH}/auth/code/request`, jsonOptions('POST', { phone, purpose }))
 }
 
 async function verifyCode(payload) {
-  const session = await fetchSession('/api/auth/code/verify', jsonOptions('POST', payload))
+  const session = await fetchSession(`${API_BASE_PATH}/auth/code/verify`, jsonOptions('POST', payload))
   return applySession(session)
 }
 
 async function logout() {
   try {
-    await fetchSession('/api/auth/logout', { method: 'POST' })
+    await fetchSession(`${API_BASE_PATH}/auth/logout`, { method: 'POST' })
   } finally {
     clearSession()
   }
@@ -126,7 +128,7 @@ async function logout() {
 
 async function updateProfile(profile) {
   customer.value = await fetchSession(
-    '/api/customers/me',
+    `${API_BASE_PATH}/customers/me`,
     jsonOptions('PUT', profile),
     true
   )
@@ -136,18 +138,18 @@ async function updateProfile(profile) {
 async function uploadPhoto(file) {
   const body = new globalThis.FormData()
   body.append('file', file)
-  await fetchSession('/api/customers/me/photo', { method: 'PUT', body }, true)
+  await fetchSession(`${API_BASE_PATH}/customers/me/photo`, { method: 'PUT', body }, true)
   customer.value = { ...customer.value, hasPhoto: true }
 }
 
 async function deletePhoto() {
-  await fetchSession('/api/customers/me/photo', { method: 'DELETE' }, true)
+  await fetchSession(`${API_BASE_PATH}/customers/me/photo`, { method: 'DELETE' }, true)
   customer.value = { ...customer.value, hasPhoto: false }
 }
 
 async function getPhoto() {
   async function request(retry = true) {
-    const response = await globalThis.fetch('/api/customers/me/photo', {
+    const response = await globalThis.fetch(`${API_BASE_PATH}/customers/me/photo`, {
       credentials: 'include',
       headers: { Authorization: `Bearer ${accessToken.value}` }
     })

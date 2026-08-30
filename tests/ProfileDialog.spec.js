@@ -76,11 +76,11 @@ describe('ProfileDialog', () => {
     }
     const photo = new globalThis.Blob(['photo'], { type: 'image/png' })
     const fetch = vi.fn((url, options) => {
-      if (url === '/api/auth/code/verify') return Promise.resolve(sessionResponse(customer))
-      if (url === '/api/customers/me' && options.method === 'PUT') return Promise.resolve(response(200, updated))
-      if (url === '/api/customers/me/photo' && options.method === 'PUT') return Promise.resolve(response(204))
-      if (url === '/api/customers/me/photo' && options.method === 'DELETE') return Promise.resolve(response(204))
-      if (url === '/api/customers/me/photo') return Promise.resolve(response(200, photo))
+      if (url === '/api/v1/auth/code/verify') return Promise.resolve(sessionResponse(customer))
+      if (url === '/api/v1/customers/me' && options.method === 'PUT') return Promise.resolve(response(200, updated))
+      if (url === '/api/v1/customers/me/photo' && options.method === 'PUT') return Promise.resolve(response(204))
+      if (url === '/api/v1/customers/me/photo' && options.method === 'DELETE') return Promise.resolve(response(204))
+      if (url === '/api/v1/customers/me/photo') return Promise.resolve(response(200, photo))
       throw new Error(`Unexpected request: ${url}`)
     })
     vi.stubGlobal('fetch', fetch)
@@ -106,7 +106,7 @@ describe('ProfileDialog', () => {
       new globalThis.Event('submit', { bubbles: true, cancelable: true })
     )
     await vi.waitFor(() => expect(document.querySelector('.form-success')).not.toBeNull())
-    const updateCall = fetch.mock.calls.find(([url]) => url === '/api/customers/me')
+    const updateCall = fetch.mock.calls.find(([url]) => url === '/api/v1/customers/me')
     expect(JSON.parse(updateCall[1].body)).toMatchObject({
       lastName: 'Новая',
       firstName: 'Мария',
@@ -149,15 +149,15 @@ describe('ProfileDialog', () => {
     }
     let photoReads = 0
     const fetch = vi.fn((url, options) => {
-      if (url === '/api/auth/code/verify') return Promise.resolve(sessionResponse(customer))
-      if (url === '/api/customers/me') return Promise.resolve(response(400, { detail: 'Профиль не сохранён' }))
-      if (url === '/api/customers/me/photo' && options.method === 'PUT') {
+      if (url === '/api/v1/auth/code/verify') return Promise.resolve(sessionResponse(customer))
+      if (url === '/api/v1/customers/me') return Promise.resolve(response(400, { detail: 'Профиль не сохранён' }))
+      if (url === '/api/v1/customers/me/photo' && options.method === 'PUT') {
         return Promise.resolve(response(400, { detail: 'Фото не загружено' }))
       }
-      if (url === '/api/customers/me/photo' && options.method === 'DELETE') {
+      if (url === '/api/v1/customers/me/photo' && options.method === 'DELETE') {
         return Promise.resolve(response(500, { detail: 'Фото не удалено' }))
       }
-      if (url === '/api/customers/me/photo') {
+      if (url === '/api/v1/customers/me/photo') {
         photoReads += 1
         return Promise.resolve(response(photoReads === 1 ? 500 : 200, photoReads === 1 ? {} : new globalThis.Blob(['photo'])))
       }

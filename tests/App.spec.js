@@ -44,8 +44,8 @@ describe('App authentication flow', () => {
 
   it('shows authentication when no refresh session is available', async () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url === '/api/status/status') return Promise.resolve(response(200, { appVersion: '0.0.3' }))
-      if (url === '/api/auth/refresh') return Promise.resolve(response(401, { detail: 'expired' }))
+      if (url === '/api/v1/status/status') return Promise.resolve(response(200, { appVersion: '0.0.3' }))
+      if (url === '/api/v1/auth/refresh') return Promise.resolve(response(401, { detail: 'expired' }))
       throw new Error(`Unexpected request: ${url}`)
     }))
 
@@ -58,8 +58,8 @@ describe('App authentication flow', () => {
 
   it('restores a session and renders the customer dashboard', async () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url === '/api/status/status') return Promise.resolve(response(200, { appVersion: '0.0.3' }))
-      if (url === '/api/auth/refresh') {
+      if (url === '/api/v1/status/status') return Promise.resolve(response(200, { appVersion: '0.0.3' }))
+      if (url === '/api/v1/auth/refresh') {
         return Promise.resolve(response(200, {
           accessToken: 'access-token',
           expiresAt: '2026-08-30T00:15:00Z',
@@ -79,10 +79,10 @@ describe('App authentication flow', () => {
 
   it('requests and verifies a one-time login code', async () => {
     const fetch = vi.fn((url) => {
-      if (url === '/api/status/status') return Promise.resolve(response(200, { appVersion: '0.0.3' }))
-      if (url === '/api/auth/refresh') return Promise.resolve(response(401, { detail: 'expired' }))
-      if (url === '/api/auth/code/request') return Promise.resolve(response(202, { message: 'sent' }))
-      if (url === '/api/auth/code/verify') {
+      if (url === '/api/v1/status/status') return Promise.resolve(response(200, { appVersion: '0.0.3' }))
+      if (url === '/api/v1/auth/refresh') return Promise.resolve(response(401, { detail: 'expired' }))
+      if (url === '/api/v1/auth/code/request') return Promise.resolve(response(202, { message: 'sent' }))
+      if (url === '/api/v1/auth/code/verify') {
         return Promise.resolve(response(200, {
           accessToken: 'access-token',
           expiresAt: '2026-08-30T00:15:00Z',
@@ -105,7 +105,7 @@ describe('App authentication flow', () => {
     await wrapper.get('.auth-form').trigger('submit')
     await vi.waitFor(() => expect(wrapper.find('.hero-section').exists()).toBe(true))
 
-    const verificationCall = fetch.mock.calls.find(([url]) => url === '/api/auth/code/verify')
+    const verificationCall = fetch.mock.calls.find(([url]) => url === '/api/v1/auth/code/verify')
     expect(JSON.parse(verificationCall[1].body)).toMatchObject({
       phone: '+7 999 123-45-67',
       purpose: 'login',
@@ -120,15 +120,15 @@ describe('App authentication flow', () => {
       profile: { phone: customer.phone }
     }
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url === '/api/status/status') return Promise.resolve(response(503))
-      if (url === '/api/auth/refresh') {
+      if (url === '/api/v1/status/status') return Promise.resolve(response(503))
+      if (url === '/api/v1/auth/refresh') {
         return Promise.resolve(response(200, {
           accessToken: 'access-token',
           expiresAt: '2026-08-30T00:15:00Z',
           customer: preliminaryCustomer
         }))
       }
-      if (url === '/api/auth/logout') return Promise.reject(new Error('offline'))
+      if (url === '/api/v1/auth/logout') return Promise.reject(new Error('offline'))
       throw new Error(`Unexpected request: ${url}`)
     }))
 
@@ -152,15 +152,15 @@ describe('App authentication flow', () => {
 
   it('keeps running when the version request fails and completes server logout', async () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
-      if (url === '/api/status/status') throw new Error('status offline')
-      if (url === '/api/auth/refresh') {
+      if (url === '/api/v1/status/status') throw new Error('status offline')
+      if (url === '/api/v1/auth/refresh') {
         return Promise.resolve(response(200, {
           accessToken: 'access-token',
           expiresAt: '2026-08-30T00:15:00Z',
           customer
         }))
       }
-      if (url === '/api/auth/logout') return Promise.resolve(response(204))
+      if (url === '/api/v1/auth/logout') return Promise.resolve(response(204))
       throw new Error(`Unexpected request: ${url}`)
     }))
 
