@@ -4,12 +4,21 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const loggerMocks = vi.hoisted(() => ({ log: vi.fn() }))
+vi.mock('../src/observability/logger.js', () => ({
+  uiLogger: Object.freeze({ log: loggerMocks.log })
+}))
+
 import { INTERNAL_PROBLEM_TYPES } from '../src/errors/problem.js'
+import { EVENTS } from '../src/observability/catalogue.js'
 import { resetSessionForTests, useSession } from '../src/stores/session.js'
-import { problemResponse, response } from './fixtures/http.js'
+import { TEST_TRACE_ID, problemResponse, response } from './fixtures/http.js'
 
 describe('session store', () => {
-  beforeEach(resetSessionForTests)
+  beforeEach(() => {
+    resetSessionForTests()
+    loggerMocks.log.mockClear()
+  })
 
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -256,5 +265,25 @@ describe('session store', () => {
       type: INTERNAL_PROBLEM_TYPES.sessionRestoreUnavailable
     })
     expect(session.restoreProblem.value).not.toHaveProperty('status')
+  })
+
+  it('logs the normalized restore problem with safe upstream correlation', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      problemResponse(503, 'service-unavailable')
+    ))
+
+    const session = useSession()
+    await session.restoreSession()
+
+    const call = loggerMocks.log.mock.calls.find(([event]) => event === EVENTS.sessionRestoreFailed)
+    expect(call).toEqual([
+      EVENTS.sessionRestoreFailed,
+      {
+        'error.type': INTERNAL_PROBLEM_TYPES.sessionRestoreUnavailable,
+        'sarafan.problem.code': 'ui_session_restore_unavailable',
+        'sarafan.problem.instance': session.restoreProblem.value.instance
+      },
+      { traceId: TEST_TRACE_ID }
+    ])
   })
 })

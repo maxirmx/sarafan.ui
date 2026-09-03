@@ -210,13 +210,22 @@ describe('UI observability', () => {
     expect(twoPerWindow.log(EVENTS.applicationError)).toBe(true)
     expect(twoPerWindow.log(EVENTS.applicationError)).toBe(true)
     expect(twoRecords).toHaveLength(2)
-    const invalidRateLimit = createLogger({
-      enabled: true,
-      sink: { emit: vi.fn() },
-      rateLimit: null
-    })
-    expect(invalidRateLimit.log(EVENTS.applicationError)).toBe(true)
-    expect(invalidRateLimit.log(EVENTS.applicationError)).toBe(false)
+    for (const rateLimit of [
+      null,
+      {},
+      { maximum: 0, windowMilliseconds: 1000 },
+      { maximum: 1, windowMilliseconds: 0 },
+      { maximum: 1.5, windowMilliseconds: 1000 },
+      { maximum: 1, windowMilliseconds: Number.POSITIVE_INFINITY }
+    ]) {
+      const invalidRateLimit = createLogger({
+        enabled: true,
+        sink: { emit: vi.fn() },
+        rateLimit
+      })
+      expect(invalidRateLimit.log(EVENTS.applicationError)).toBe(true)
+      expect(invalidRateLimit.log(EVENTS.applicationError)).toBe(false)
+    }
 
     const errorOnlyRecords = []
     const errorOnly = createLogger({

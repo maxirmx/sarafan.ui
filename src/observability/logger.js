@@ -9,6 +9,19 @@ import { createConsoleSink } from './console-sink.js'
 import { sanitizeAttributes, sanitizeTraceContext } from './sanitize.js'
 
 const DEFAULT_RATE_LIMIT = Object.freeze({ maximum: 5, windowMilliseconds: 60_000 })
+const FAIL_CLOSED_RATE_LIMIT = Object.freeze({
+  maximum: 1,
+  windowMilliseconds: Number.POSITIVE_INFINITY
+})
+
+function normalizeRateLimit(rateLimit) {
+  return Number.isSafeInteger(rateLimit?.maximum)
+    && rateLimit.maximum > 0
+    && Number.isSafeInteger(rateLimit.windowMilliseconds)
+    && rateLimit.windowMilliseconds > 0
+    ? rateLimit
+    : FAIL_CLOSED_RATE_LIMIT
+}
 
 function createRecord(definition, attributes, context, now, environment) {
   const trace = sanitizeTraceContext(context)
@@ -39,6 +52,7 @@ export function createLogger({
   rateLimit = DEFAULT_RATE_LIMIT
 } = {}) {
   const minimumNumber = SEVERITY[minimumSeverity]?.number ?? SEVERITY.WARN.number
+  const effectiveRateLimit = normalizeRateLimit(rateLimit)
   const limits = new Map()
 
   function emit(definition, attributes = {}, context = {}) {
@@ -72,12 +86,12 @@ export function createLogger({
 
       const currentTime = now().getTime()
       const current = limits.get(definition.name)
-      if (!current || currentTime - current.startedAt >= rateLimit.windowMilliseconds) {
+      if (!current || currentTime - current.startedAt >= effectiveRateLimit.windowMilliseconds) {
         if (current) emitDropped(definition.name, current.dropped)
         limits.set(definition.name, { startedAt: currentTime, emitted: 1, dropped: 0 })
         return emit(definition, attributes, context)
       }
-      if (current.emitted >= rateLimit.maximum) {
+      if (current.emitted >= effectiveRateLimit.maximum) {
         current.dropped += 1
         return false
       }
