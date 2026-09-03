@@ -19,6 +19,14 @@ describe('runtime logging deployment contract', () => {
     expect(html.indexOf('/runtime-config.js')).toBeLessThan(html.indexOf('/src/main.js'))
   })
 
+  it('uses the Gzhel artwork for browser and installed application icons', async () => {
+    const html = await source('index.html')
+    expect(html).toContain(
+      '<link rel="icon" type="image/png" href="/sarafan-gzhel-icon.png">'
+    )
+    expect(html).toContain('<link rel="apple-touch-icon" href="/sarafan-gzhel-icon.png">')
+  })
+
   it('generates an exact fail-closed boolean when the container starts', async () => {
     const [dockerfile, entrypoint] = await Promise.all([
       source('Dockerfile'),
