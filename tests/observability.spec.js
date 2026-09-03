@@ -261,6 +261,37 @@ describe('UI observability', () => {
     }
   })
 
+  it('keeps the console sink non-throwing with partial, absent, or failing targets', () => {
+    const record = {
+      timestamp: '2026-09-03T10:00:00.000Z',
+      severityText: 'TEST',
+      severityNumber: 5,
+      eventName: 'sarafan.ui.test',
+      body: 'Readable message.'
+    }
+    const fallbackTarget = { log: vi.fn() }
+    const fallbackSink = createConsoleSink(fallbackTarget)
+
+    for (const severityNumber of [21, 13, 9, 5]) {
+      expect(() => fallbackSink.emit({ ...record, severityNumber })).not.toThrow()
+    }
+    expect(fallbackTarget.log).toHaveBeenCalledTimes(4)
+    expect(fallbackTarget.log).toHaveBeenLastCalledWith(formatConsoleRecord(record))
+
+    const partialTarget = { info: vi.fn() }
+    createConsoleSink(partialTarget).emit(record)
+    expect(partialTarget.info).toHaveBeenCalledWith(formatConsoleRecord(record))
+
+    expect(() => createConsoleSink(null).emit(record)).not.toThrow()
+    expect(() => createConsoleSink(new Proxy({}, {
+      get: () => { throw new Error('console inaccessible') }
+    })).emit(record)).not.toThrow()
+    expect(() => createConsoleSink({
+      debug: () => { throw new Error('console unavailable') }
+    }).emit(record)).not.toThrow()
+    expect(() => fallbackSink.emit(null)).not.toThrow()
+  })
+
   it('generates valid non-zero W3C identifiers and retains a trace across attempts', () => {
     let seed = 0
     const cryptoTarget = {
