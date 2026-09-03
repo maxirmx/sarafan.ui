@@ -2,12 +2,18 @@
 // All rights reserved.
 // This file is a part of the Sarafan application
 
+import { EVENTS } from '../observability/catalogue.js'
+import { uiLogger } from '../observability/logger.js'
+import { problemAttributes, problemContext } from '../observability/problem-reporting.js'
+
 export const PROBLEM_TYPE_ROOT = 'https://sarafan.sw.consulting/problems/'
 
 export const CORE_PROBLEM_TYPES = Object.freeze({
   customerNotFound: `${PROBLEM_TYPE_ROOT}customer-not-found`,
   invalidAccessToken: `${PROBLEM_TYPE_ROOT}invalid-access-token`,
-  invalidRefreshToken: `${PROBLEM_TYPE_ROOT}invalid-refresh-token`
+  invalidRefreshToken: `${PROBLEM_TYPE_ROOT}invalid-refresh-token`,
+  loginFailed: `${PROBLEM_TYPE_ROOT}login-failed`,
+  validationFailed: `${PROBLEM_TYPE_ROOT}validation-failed`
 })
 
 const INTERNAL_CATALOGUE = Object.freeze({
@@ -142,5 +148,11 @@ export function problemFieldErrors(value, field) {
 }
 
 export function suppressProblem(value, options = {}) {
-  return normalizeProblem(value, options)
+  const problem = normalizeProblem(value, options)
+  const logger = options.logger ?? uiLogger
+  logger.log(EVENTS.operationSuppressed, {
+    ...problemAttributes(problem),
+    'operation.name': options.operation ?? 'unknown'
+  }, problemContext(problem))
+  return problem
 }

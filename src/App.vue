@@ -11,7 +11,7 @@ import ProfileDialog from './components/ProfileDialog.vue'
 import { presentProblem, suppressProblem } from './errors/problem.js'
 import { useSession } from './stores/session.js'
 
-const appIcon = '/favicon.svg'
+const appIcon = '/sarafan-gzhel-icon.png'
 const coreVersion = ref('')
 const profileOpen = ref(false)
 const { customer, getStatus, logout, restoreProblem, restoreSession, restoring } = useSession()
@@ -33,7 +33,10 @@ async function fetchCoreVersion() {
     const status = await getStatus()
     coreVersion.value = status.appVersion ?? ''
   } catch (value) {
-    suppressProblem(value, { detail: 'Не удалось получить версию сервера' })
+    suppressProblem(value, {
+      detail: 'Не удалось получить версию сервера',
+      operation: 'status.version.load'
+    })
   }
 }
 
@@ -42,7 +45,10 @@ async function signOut() {
   try {
     await logout()
   } catch (value) {
-    suppressProblem(value, { detail: 'Не удалось завершить сеанс на сервере' })
+    suppressProblem(value, {
+      detail: 'Не удалось завершить сеанс на сервере',
+      operation: 'session.logout'
+    })
   }
 }
 

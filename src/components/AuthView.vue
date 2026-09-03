@@ -15,7 +15,7 @@ import {
 import { useSession } from '../stores/session.js'
 
 const { requestCode, verifyCode } = useSession()
-const appIcon = '/favicon.svg'
+const appIcon = '/sarafan-gzhel-icon.png'
 const mode = ref('login')
 const step = ref('phone')
 const phone = ref('')

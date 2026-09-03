@@ -5,6 +5,7 @@
 import { vi } from 'vitest'
 
 const PROBLEM_ROOT = 'https://sarafan.sw.consulting/problems/'
+export const TEST_TRACE_ID = '4bf92f3577b34da6a3ce929d0e0e4736'
 
 export function response(status, body = null, contentType = 'application/json') {
   return {
@@ -22,9 +23,9 @@ export function problem(status, suffix, overrides = {}) {
     title: 'Не удалось выполнить запрос',
     status,
     detail: 'Исправьте запрос и повторите попытку',
-    instance: `urn:sarafan:problem:${suffix}:${status}`,
+    instance: `urn:sarafan:problem:${TEST_TRACE_ID}`,
     code: suffix.replaceAll('-', '_'),
-    traceId: `trace-${suffix}-${status}`,
+    traceId: TEST_TRACE_ID,
     ...overrides
   }
 }

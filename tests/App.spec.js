@@ -50,6 +50,7 @@ describe('App authentication flow', () => {
     const wrapper = mountApp()
     await vi.waitFor(() => expect(wrapper.find('.auth-card').exists()).toBe(true))
 
+    expect(wrapper.get('.auth-brand img').attributes('src')).toBe('/sarafan-gzhel-icon.png')
     expect(wrapper.get('h1').text()).toBe('Рады видеть снова')
     expect(wrapper.text()).toContain('Регистрация')
   })
@@ -73,6 +74,10 @@ describe('App authentication flow', () => {
     expect(wrapper.get('.hero-kicker').text()).toContain('Мария')
     expect(wrapper.get('.profile-avatar').text()).toBe('МК')
     expect(wrapper.findAll('.order-card')).toHaveLength(2)
+    expect(wrapper.findAll('.brand-mark__icon')).toHaveLength(2)
+    expect(wrapper.findAll('.brand-mark__icon').every(icon =>
+      icon.attributes('src') === '/sarafan-gzhel-icon.png'
+    )).toBe(true)
   })
 
   it('requests and verifies a one-time login code', async () => {

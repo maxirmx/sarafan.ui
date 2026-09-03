@@ -11,6 +11,9 @@ import {
   ProblemError,
   createInternalProblem
 } from '../errors/problem.js'
+import { EVENTS } from '../observability/catalogue.js'
+import { uiLogger } from '../observability/logger.js'
+import { problemAttributes, problemContext } from '../observability/problem-reporting.js'
 
 const accessToken = ref('')
 const customer = ref(null)
@@ -39,12 +42,16 @@ function jsonOptions(method, body) {
 
 const client = createApiClient({
   getAccessToken: () => accessToken.value,
-  refreshSession: () => refreshSession()
+  refreshSession: operationTrace => refreshSession(operationTrace)
 })
 
-async function refreshSession() {
+async function refreshSession(operationTrace) {
   if (!refreshPromise) {
-    refreshPromise = client.request(`${API_BASE_PATH}/auth/refresh`, { method: 'POST' })
+    refreshPromise = client.request(
+      `${API_BASE_PATH}/auth/refresh`,
+      { method: 'POST' },
+      { operationTrace }
+    )
       .then(applySession)
       .catch((error) => {
         clearSession()
@@ -65,7 +72,13 @@ async function restoreSession() {
     await refreshSession()
   } catch (error) {
     if (!(error instanceof ProblemError) || error.type !== CORE_PROBLEM_TYPES.invalidRefreshToken) {
-      restoreProblem.value = createInternalProblem('sessionRestoreUnavailable', { cause: error })
+      const problem = createInternalProblem('sessionRestoreUnavailable', { cause: error })
+      restoreProblem.value = problem
+      uiLogger.log(
+        EVENTS.sessionRestoreFailed,
+        problemAttributes(problem),
+        problemContext(error)
+      )
     }
   } finally {
     restoring.value = false
