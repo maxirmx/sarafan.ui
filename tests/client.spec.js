@@ -167,6 +167,53 @@ describe('RFC 9457 API client', () => {
     expect(JSON.stringify(logger.log.mock.calls)).not.toMatch(/79991234567|never-log|X-Unsafe/u)
   })
 
+  it('logs non-validation client failures', async () => {
+    const logger = { log: vi.fn() }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(problemResponse(
+      404,
+      'customer-not-found'
+    )))
+    const client = createApiClient({
+      getAccessToken: () => '',
+      refreshSession: vi.fn(),
+      logger
+    })
+
+    await expect(client.request('/api/v1/customers/me')).rejects.toMatchObject({
+      code: 'customer_not_found'
+    })
+    expect(logger.log).toHaveBeenCalledOnce()
+  })
+
+  it('logs an invalid access token only after its retry is exhausted', async () => {
+    const logger = { log: vi.fn() }
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(problemResponse(401, 'invalid-access-token'))
+      .mockResolvedValueOnce(problemResponse(401, 'invalid-access-token'))
+      .mockResolvedValueOnce(problemResponse(401, 'invalid-access-token'))
+    vi.stubGlobal('fetch', fetch)
+    const client = createApiClient({
+      getAccessToken: () => 'token',
+      refreshSession: vi.fn(),
+      logger
+    })
+
+    await expect(client.request(
+      '/api/v1/customers/me',
+      {},
+      { authorize: true, retry: false }
+    )).rejects.toBeInstanceOf(ProblemError)
+    expect(logger.log).not.toHaveBeenCalled()
+
+    await expect(client.request(
+      '/api/v1/customers/me',
+      {},
+      { authorize: true }
+    )).rejects.toBeInstanceOf(ProblemError)
+    expect(logger.log).toHaveBeenCalledOnce()
+    expect(logger.log.mock.calls[0][1]['retry.count']).toBe(1)
+  })
+
   it('marks an already-reported refresh failure to prevent duplicate operation logs', async () => {
     const logger = { log: vi.fn() }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(problemResponse(401, 'invalid-access-token')))

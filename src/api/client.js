@@ -4,7 +4,6 @@
 
 import {
   CORE_PROBLEM_TYPES,
-  INTERNAL_PROBLEM_TYPES,
   ProblemError,
   PROBLEM_TYPE_ROOT,
   createInternalProblem,
@@ -133,11 +132,11 @@ function routeTemplate(path) {
 }
 
 function shouldReportFailure(problem, retryCount) {
-  if (problem.type === CORE_PROBLEM_TYPES.invalidRefreshToken) return false
-  if (problem.type === INTERNAL_PROBLEM_TYPES.networkUnavailable
-    || problem.type === INTERNAL_PROBLEM_TYPES.protocolError) return true
-  if (Number.isInteger(problem.status) && problem.status >= 500) return true
-  return problem.status === 401 && retryCount > 0
+  if (problem.type === CORE_PROBLEM_TYPES.validationFailed
+    || problem.type === CORE_PROBLEM_TYPES.loginFailed
+    || problem.type === CORE_PROBLEM_TYPES.invalidRefreshToken) return false
+  if (problem.type === CORE_PROBLEM_TYPES.invalidAccessToken) return retryCount > 0
+  return true
 }
 
 export function createApiClient({ getAccessToken, refreshSession, logger = uiLogger }) {

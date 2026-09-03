@@ -11,7 +11,9 @@ export const PROBLEM_TYPE_ROOT = 'https://sarafan.sw.consulting/problems/'
 export const CORE_PROBLEM_TYPES = Object.freeze({
   customerNotFound: `${PROBLEM_TYPE_ROOT}customer-not-found`,
   invalidAccessToken: `${PROBLEM_TYPE_ROOT}invalid-access-token`,
-  invalidRefreshToken: `${PROBLEM_TYPE_ROOT}invalid-refresh-token`
+  invalidRefreshToken: `${PROBLEM_TYPE_ROOT}invalid-refresh-token`,
+  loginFailed: `${PROBLEM_TYPE_ROOT}login-failed`,
+  validationFailed: `${PROBLEM_TYPE_ROOT}validation-failed`
 })
 
 const INTERNAL_CATALOGUE = Object.freeze({
