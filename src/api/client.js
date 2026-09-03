@@ -3,16 +3,34 @@
 // This file is a part of the Sarafan application
 
 import {
+  CORE_PROBLEM_TYPES,
+  INTERNAL_PROBLEM_TYPES,
   ProblemError,
   PROBLEM_TYPE_ROOT,
-  createInternalProblem
+  createInternalProblem,
+  normalizeProblem
 } from '../errors/problem.js'
+import { EVENTS } from '../observability/catalogue.js'
+import { isHandled, markHandled } from '../observability/deduplication.js'
+import { uiLogger } from '../observability/logger.js'
+import { problemAttributes } from '../observability/problem-reporting.js'
+import { createOperationTrace, problemTraceContext } from '../observability/trace-context.js'
 
 export const JSON_ACCEPT = 'application/json, application/problem+json'
 export const PHOTO_ACCEPT = 'image/avif, image/webp, image/png, image/jpeg, application/problem+json'
 
 const RUSSIAN_TEXT = /[А-ЯЁа-яё]/u
 const CODE_PATTERN = /^[a-z][a-z0-9_]*$/u
+const TRACE_ID_PATTERN = /^[0-9a-f]{32}$/u
+const API_ROUTE_TEMPLATES = new Set([
+  '/api/v1/auth/code/request',
+  '/api/v1/auth/code/verify',
+  '/api/v1/auth/logout',
+  '/api/v1/auth/refresh',
+  '/api/v1/customers/me',
+  '/api/v1/customers/me/photo',
+  '/api/v1/status/status'
+])
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -63,8 +81,13 @@ function invalidProblemReason(document, responseStatus) {
   if (document.errors !== undefined && !validErrors(document.errors)) {
     return 'Problem errors extension is invalid'
   }
-  if (document.traceId !== undefined && !isNonEmptyString(document.traceId)) {
+  if (document.traceId !== undefined
+    && (typeof document.traceId !== 'string' || !TRACE_ID_PATTERN.test(document.traceId))) {
     return 'Problem trace identifier is invalid'
+  }
+  if (document.traceId !== undefined
+    && document.instance !== `urn:sarafan:problem:${document.traceId}`) {
+    return 'Problem trace correlation is inconsistent'
   }
   return ''
 }
@@ -96,37 +119,90 @@ async function parseSuccess(response, responseType) {
   }
 }
 
-export function createApiClient({ getAccessToken, refreshSession }) {
+function requestMethod(options) {
+  return typeof options.method === 'string' ? options.method.toUpperCase() : 'GET'
+}
+
+function routeTemplate(path) {
+  try {
+    const pathname = new globalThis.URL(path, 'https://sarafan.invalid').pathname
+    return API_ROUTE_TEMPLATES.has(pathname) ? pathname : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function shouldReportFailure(problem, retryCount) {
+  if (problem.type === CORE_PROBLEM_TYPES.invalidRefreshToken) return false
+  if (problem.type === INTERNAL_PROBLEM_TYPES.networkUnavailable
+    || problem.type === INTERNAL_PROBLEM_TYPES.protocolError) return true
+  if (Number.isInteger(problem.status) && problem.status >= 500) return true
+  return problem.status === 401 && retryCount > 0
+}
+
+export function createApiClient({ getAccessToken, refreshSession, logger = uiLogger }) {
   async function request(path, options = {}, policy = {}) {
     const {
       authorize = false,
       retry = true,
       responseType = 'json'
     } = policy
-    const headers = new globalThis.Headers(options.headers)
-    headers.set('Accept', responseType === 'blob' ? PHOTO_ACCEPT : JSON_ACCEPT)
+    const trace = createOperationTrace()
+    let finalAttempt = 0
 
-    const token = getAccessToken()
-    if (authorize && token) headers.set('Authorization', `Bearer ${token}`)
+    async function attempt(retryCount) {
+      finalAttempt = retryCount
+      const attemptTrace = trace.nextAttempt()
+      const headers = new globalThis.Headers(options.headers)
+      headers.set('Accept', responseType === 'blob' ? PHOTO_ACCEPT : JSON_ACCEPT)
+      headers.set('traceparent', attemptTrace.traceparent)
 
-    let response
+      const token = getAccessToken()
+      if (authorize && token) headers.set('Authorization', `Bearer ${token}`)
+
+      let response
+      try {
+        response = await globalThis.fetch(path, {
+          ...options,
+          headers,
+          credentials: 'include'
+        })
+      } catch (cause) {
+        throw createInternalProblem('networkUnavailable', { cause })
+      }
+
+      if (response.status === 401 && authorize && retryCount === 0 && retry) {
+        await refreshSession()
+        return attempt(1)
+      }
+
+      if (!response.ok) throw await parseProblemResponse(response)
+      return parseSuccess(response, responseType)
+    }
+
     try {
-      response = await globalThis.fetch(path, {
-        ...options,
-        headers,
-        credentials: 'include'
-      })
-    } catch (cause) {
-      throw createInternalProblem('networkUnavailable', { cause })
+      return await attempt(0)
+    } catch (value) {
+      const problem = value instanceof ProblemError ? value : normalizeProblem(value)
+      if (!isHandled(problem)) {
+        if (shouldReportFailure(problem, finalAttempt)) {
+          const attributes = {
+            ...problemAttributes(problem),
+            'http.request.method': requestMethod(options),
+            'http.route': routeTemplate(path),
+            'http.response.status_code': problem.status,
+            'retry.count': finalAttempt
+          }
+          logger.log(
+            EVENTS.apiRequestFailed,
+            attributes,
+            problemTraceContext(problem, trace.lastContext())
+          )
+        }
+        markHandled(problem)
+      }
+      throw problem
     }
-
-    if (response.status === 401 && authorize && retry) {
-      await refreshSession()
-      return request(path, options, { ...policy, authorize: true, retry: false })
-    }
-
-    if (!response.ok) throw await parseProblemResponse(response)
-    return parseSuccess(response, responseType)
   }
 
   return Object.freeze({ request })

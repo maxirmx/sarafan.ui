@@ -11,6 +11,9 @@ import {
   ProblemError,
   createInternalProblem
 } from '../errors/problem.js'
+import { EVENTS } from '../observability/catalogue.js'
+import { uiLogger } from '../observability/logger.js'
+import { problemAttributes, problemContext } from '../observability/problem-reporting.js'
 
 const accessToken = ref('')
 const customer = ref(null)
@@ -66,6 +69,11 @@ async function restoreSession() {
   } catch (error) {
     if (!(error instanceof ProblemError) || error.type !== CORE_PROBLEM_TYPES.invalidRefreshToken) {
       restoreProblem.value = createInternalProblem('sessionRestoreUnavailable', { cause: error })
+      uiLogger.log(
+        EVENTS.sessionRestoreFailed,
+        problemAttributes(error),
+        problemContext(error)
+      )
     }
   } finally {
     restoring.value = false

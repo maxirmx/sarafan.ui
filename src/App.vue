@@ -33,7 +33,10 @@ async function fetchCoreVersion() {
     const status = await getStatus()
     coreVersion.value = status.appVersion ?? ''
   } catch (value) {
-    suppressProblem(value, { detail: 'Не удалось получить версию сервера' })
+    suppressProblem(value, {
+      detail: 'Не удалось получить версию сервера',
+      operation: 'status.version.load'
+    })
   }
 }
 
@@ -42,7 +45,10 @@ async function signOut() {
   try {
     await logout()
   } catch (value) {
-    suppressProblem(value, { detail: 'Не удалось завершить сеанс на сервере' })
+    suppressProblem(value, {
+      detail: 'Не удалось завершить сеанс на сервере',
+      operation: 'session.logout'
+    })
   }
 }
 

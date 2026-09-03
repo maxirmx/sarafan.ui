@@ -2,7 +2,7 @@
 // All rights reserved.
 // This file is a part of the Sarafan application
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   INTERNAL_PROBLEM_TYPES,
@@ -47,10 +47,10 @@ describe('shared problem model', () => {
       title: 'Пользователь не найден',
       status: 404,
       detail: 'Пользователь не найден',
-      instance: 'urn:sarafan:problem:test',
+      instance: 'urn:sarafan:problem:4bf92f3577b34da6a3ce929d0e0e4736',
       code: 'customer_not_found',
       errors: { Phone: ['Проверьте номер телефона'] },
-      traceId: 'trace-id'
+      traceId: '4bf92f3577b34da6a3ce929d0e0e4736'
     })
 
     expect(normalizeProblem(server)).toBe(server)
@@ -59,7 +59,10 @@ describe('shared problem model', () => {
     })).toBe('Выберите регистрацию')
     expect(problemFieldErrors(server, 'phone')).toEqual(['Проверьте номер телефона'])
     expect(problemFieldErrors(server, 'code')).toEqual([])
-    expect(server.toJSON()).toEqual(expect.objectContaining({ status: 404, traceId: 'trace-id' }))
+    expect(server.toJSON()).toEqual(expect.objectContaining({
+      status: 404,
+      traceId: '4bf92f3577b34da6a3ce929d0e0e4736'
+    }))
   })
 
   it('normalizes native and arbitrary failures without displaying raw values', () => {
@@ -81,14 +84,21 @@ describe('shared problem model', () => {
   })
 
   it('supports structured local validation and named suppression', () => {
+    const logger = { log: vi.fn() }
     const validation = createInternalProblem('invalidInput', {
       detail: 'Введите номер телефона',
       errors: { phone: ['Введите номер телефона'] }
     })
     expect(problemFieldErrors(validation, 'phone')).toEqual(['Введите номер телефона'])
-    expect(suppressProblem(validation)).toBe(validation)
-    expect(suppressProblem(new Error('hidden'), { detail: 'Безопасная диагностика' }).message)
+    expect(suppressProblem(validation, { operation: 'validation.local', logger })).toBe(validation)
+    expect(suppressProblem(new Error('hidden'), {
+      detail: 'Безопасная диагностика',
+      operation: 'failure.expected',
+      logger
+    }).message)
       .toBe('Безопасная диагностика')
+    expect(logger.log).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(logger.log.mock.calls)).not.toContain('hidden')
   })
 
   it('rejects unknown internal catalogue keys', () => {

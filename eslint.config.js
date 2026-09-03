@@ -21,7 +21,14 @@ export default [
       }
     },
     rules: {
+      'no-console': 'error',
       'vue/multi-word-component-names': 'off'
+    }
+  },
+  {
+    files: ['src/observability/console-sink.js'],
+    rules: {
+      'no-console': 'off'
     }
   }
 ]
