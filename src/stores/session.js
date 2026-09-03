@@ -42,12 +42,16 @@ function jsonOptions(method, body) {
 
 const client = createApiClient({
   getAccessToken: () => accessToken.value,
-  refreshSession: () => refreshSession()
+  refreshSession: operationTrace => refreshSession(operationTrace)
 })
 
-async function refreshSession() {
+async function refreshSession(operationTrace) {
   if (!refreshPromise) {
-    refreshPromise = client.request(`${API_BASE_PATH}/auth/refresh`, { method: 'POST' })
+    refreshPromise = client.request(
+      `${API_BASE_PATH}/auth/refresh`,
+      { method: 'POST' },
+      { operationTrace }
+    )
       .then(applySession)
       .catch((error) => {
         clearSession()

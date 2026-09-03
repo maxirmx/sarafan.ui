@@ -77,30 +77,37 @@ describe('RFC 9457 API client', () => {
 
   it('adds JSON negotiation, credentials, bearer auth, and retries once after refresh', async () => {
     let token = 'old-token'
-    const refreshSession = vi.fn(async () => { token = 'new-token' })
+    let client
+    const refreshSession = vi.fn(async (operationTrace) => {
+      await client.request('/refresh', { method: 'POST' }, { operationTrace })
+      token = 'new-token'
+    })
     const fetch = vi.fn()
       .mockResolvedValueOnce(problemResponse(401, 'invalid-access-token', {
         title: 'Недействительный токен доступа',
         detail: 'Обновите сеанс и повторите запрос'
       }))
+      .mockResolvedValueOnce(response(204))
       .mockResolvedValueOnce(response(200, { ok: true }))
     vi.stubGlobal('fetch', fetch)
-    const client = createApiClient({ getAccessToken: () => token, refreshSession })
+    client = createApiClient({ getAccessToken: () => token, refreshSession })
 
     await expect(client.request('/resource', {}, { authorize: true })).resolves.toEqual({ ok: true })
 
     expect(refreshSession).toHaveBeenCalledOnce()
-    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledTimes(3)
     expect(fetch.mock.calls[0][1].headers.get('Accept')).toBe(JSON_ACCEPT)
     expect(fetch.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer old-token')
-    expect(fetch.mock.calls[1][1].headers.get('Authorization')).toBe('Bearer new-token')
-    expect(fetch.mock.calls[1][1].credentials).toBe('include')
-    const firstTraceparent = fetch.mock.calls[0][1].headers.get('traceparent')
-    const retryTraceparent = fetch.mock.calls[1][1].headers.get('traceparent')
-    expect(firstTraceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-00$/u)
-    expect(retryTraceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-00$/u)
-    expect(firstTraceparent.slice(3, 35)).toBe(retryTraceparent.slice(3, 35))
-    expect(firstTraceparent.slice(36, 52)).not.toBe(retryTraceparent.slice(36, 52))
+    expect(fetch.mock.calls[2][1].headers.get('Authorization')).toBe('Bearer new-token')
+    expect(fetch.mock.calls[2][1].credentials).toBe('include')
+
+    const traceparents = fetch.mock.calls.map(([, options]) => options.headers.get('traceparent'))
+    expect(traceparents).toHaveLength(3)
+    for (const traceparent of traceparents) {
+      expect(traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-00$/u)
+    }
+    expect(new Set(traceparents.map(traceparent => traceparent.slice(3, 35))).size).toBe(1)
+    expect(new Set(traceparents.map(traceparent => traceparent.slice(36, 52))).size).toBe(3)
   })
 
   it('negotiates photo responses and handles bodyless successes', async () => {

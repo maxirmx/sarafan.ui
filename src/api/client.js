@@ -143,10 +143,11 @@ export function createApiClient({ getAccessToken, refreshSession, logger = uiLog
   async function request(path, options = {}, policy = {}) {
     const {
       authorize = false,
+      operationTrace = createOperationTrace(),
       retry = true,
       responseType = 'json'
     } = policy
-    const trace = createOperationTrace()
+    const trace = operationTrace
     let finalAttempt = 0
 
     async function attempt(retryCount) {
@@ -171,7 +172,7 @@ export function createApiClient({ getAccessToken, refreshSession, logger = uiLog
       }
 
       if (response.status === 401 && authorize && retryCount === 0 && retry) {
-        await refreshSession()
+        await refreshSession(trace)
         return attempt(1)
       }
 

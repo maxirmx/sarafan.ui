@@ -104,6 +104,13 @@ describe('session store', () => {
     expect(profileCalls).toHaveLength(2)
     expect(profileCalls[1][1].headers.get('Authorization')).toBe('Bearer new-token')
     expect(fetch.mock.calls.filter(([url]) => url === '/api/v1/auth/refresh')).toHaveLength(1)
+
+    const flowCalls = fetch.mock.calls.filter(([url]) =>
+      url === '/api/v1/customers/me' || url === '/api/v1/auth/refresh'
+    )
+    const traceparents = flowCalls.map(([, options]) => options.headers.get('traceparent'))
+    expect(new Set(traceparents.map(traceparent => traceparent.slice(3, 35))).size).toBe(1)
+    expect(new Set(traceparents.map(traceparent => traceparent.slice(36, 52))).size).toBe(3)
   })
 
   it('restores one shared refresh request and clears an unavailable session', async () => {
