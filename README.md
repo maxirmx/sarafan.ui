@@ -61,3 +61,11 @@ When enabled, Production emits Warning and Error events; Development also permit
 Every API network attempt carries a W3C `traceparent` even when UI logging is disabled. A retry retains the logical trace ID and receives a new span ID. For Core failures, the validated RFC 9457 `traceId` and `instance` link the browser event to Core telemetry.
 
 The allowlist excludes raw URLs/query strings, request/response bodies and headers, access/refresh tokens, cookies and verification codes, customer or device data, DOM/storage/history content, Error messages/stacks/causes, and localized Problem Details text. A remote browser exporter is intentionally not included.
+
+## Optional pull request template
+
+Use the [traceability template](.github/PULL_REQUEST_TEMPLATE/traceability.md) if helpful, or write your own PR description. It provides prompts for the planning issue, specification version and sections, relevant scenarios and design frames, and verification results.
+
+To select it on GitHub, append `&template=traceability.md` to a PR creation URL that already has query parameters, or `?template=traceability.md` if it has none. You can also copy the template into the description. See [GitHub's query parameter documentation](https://docs.github.com/en/pull-requests/reference/using-query-parameters-to-create-a-pull-request).
+
+The template is opt-in, is not the default PR body, and has no CI enforcement. Applicable issue and repository requirements still apply when using a custom description.
