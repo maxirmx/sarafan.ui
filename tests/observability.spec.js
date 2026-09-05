@@ -127,7 +127,7 @@ describe('UI observability', () => {
       spanId: SPAN_ID,
       resource: {
         'service.name': 'sarafan.ui',
-        'service.version': '0.0.5',
+        'service.version': '0.0.6',
         'deployment.environment.name': 'test'
       },
       instrumentationScope: 'sarafan.ui.observability'
